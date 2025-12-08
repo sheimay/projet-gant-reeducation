@@ -1,0 +1,245 @@
+#:kivy 2.2.0
+#:import dp kivy.metrics.dp
+
+<MenuScreen>:
+    FloatLayout:
+        # --- Fond avec le gant ---
+        Image:
+            source: "assets/menu_background.png"
+            allow_stretch: True
+            keep_ratio: False
+            size: root.width, root.height
+            pos: 0, 0
+
+        # --- Contenu principal (titre + cartes) ---
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(24)
+            size_hint: 0.9, 0.7
+            pos_hint: {"center_x": 0.5, "center_y": 0.6}
+
+            Label:
+                text: "Programme de Rééducation Interactive"
+                font_size: "28sp"
+                bold: True
+                color: 0.08, 0.13, 0.24, 1
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+            Label:
+                text: "Choisissez un mini-jeu pour travailler vos mouvements avec le gant."
+                font_size: "16sp"
+                color: 0.2, 0.3, 0.45, 1
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+            # Cartes de jeux (navigation horizontale)
+            BoxLayout:
+                orientation: "horizontal"
+                spacing: dp(20)
+                size_hint_y: 0.7
+
+                # -------- Carte 1 : Guidage Voiture --------
+                Button:
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    size_hint_x: 1
+                    on_release:
+                        app.root.current = "game"
+
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.96
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [24, 24, 24, 24]
+
+                    FloatLayout:
+                        BoxLayout:
+                            orientation: "vertical"
+                            padding: dp(16)
+                            spacing: dp(12)
+                            size_hint: 1, 1
+
+                            Image:
+                                source: "assets/icon_car.png"
+                                allow_stretch: True
+                                keep_ratio: True
+                                size_hint_y: 0.6
+
+                            Label:
+                                text: "Guidage Voiture"
+                                font_size: "18sp"
+                                bold: True
+                                color: 0.08, 0.13, 0.24, 1
+                                halign: "center"
+                                valign: "middle"
+                                text_size: self.size
+
+                            Label:
+                                text: "Contrôle latéral\n& stabilité du poignet"
+                                font_size: "14sp"
+                                color: 0.25, 0.35, 0.5, 1
+                                halign: "center"
+                                valign: "middle"
+                                text_size: self.size
+
+                        Image:
+                            source: "assets/icon_sparkle.png"
+                            size_hint: None, None
+                            size: dp(22), dp(22)
+                            pos_hint: {"right": 0.95, "top": 0.95}
+                            opacity: 0.85
+
+                # -------- Carte 2 : Tri de Perles --------
+                Button:
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    size_hint_x: 1
+                    on_release:
+                        app.root.current = "game"  # plus tard: autre écran
+
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.96
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [24, 24, 24, 24]
+
+                    FloatLayout:
+                        BoxLayout:
+                            orientation: "vertical"
+                            padding: dp(16)
+                            spacing: dp(12)
+                            size_hint: 1, 1
+
+                            Image:
+                                source: "assets/icon_beads.png"
+                                allow_stretch: True
+                                keep_ratio: True
+                                size_hint_y: 0.6
+
+                            Label:
+                                text: "Tri de Perles"
+                                font_size: "18sp"
+                                bold: True
+                                color: 0.08, 0.13, 0.24, 1
+                                halign: "center"
+                                valign: "middle"
+                                text_size: self.size
+
+                            Label:
+                                text: "Flexion précise\ndes doigts"
+                                font_size: "14sp"
+                                color: 0.25, 0.35, 0.5, 1
+                                halign: "center"
+                                valign: "middle"
+                                text_size: self.size
+
+                        Image:
+                            source: "assets/icon_sparkle.png"
+                            size_hint: None, None
+                            size: dp(22), dp(22)
+                            pos_hint: {"right": 0.95, "top": 0.95}
+                            opacity: 0.85
+
+                # -------- Carte 3 : Jump --------
+                Button:
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    size_hint_x: 1
+                    on_release:
+                        app.root.current = "game"  # plus tard: autre écran
+
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.96
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [24, 24, 24, 24]
+
+                    FloatLayout:
+                        BoxLayout:
+                            orientation: "vertical"
+                            padding: dp(16)
+                            spacing: dp(12)
+                            size_hint: 1, 1
+
+                            Image:
+                                source: "assets/icon_jump.png"
+                                allow_stretch: True
+                                keep_ratio: True
+                                size_hint_y: 0.6
+
+                            Label:
+                                text: "Jump"
+                                font_size: "18sp"
+                                bold: True
+                                color: 0.08, 0.13, 0.24, 1
+                                halign: "center"
+                                valign: "middle"
+                                text_size: self.size
+
+                            Label:
+                                text: "Force d’appui\n& réactivité"
+                                font_size: "14sp"
+                                color: 0.25, 0.35, 0.5, 1
+                                halign: "center"
+                                valign: "middle"
+                                text_size: self.size
+
+                        Image:
+                            source: "assets/icon_sparkle.png"
+                            size_hint: None, None
+                            size: dp(22), dp(22)
+                            pos_hint: {"right": 0.95, "top": 0.95}
+                            opacity: 0.85
+
+
+<GameScreen>:
+    FloatLayout:
+        # Bouton retour
+        Button:
+            text: "Retour"
+            size_hint: None, None
+            size: dp(120), dp(40)
+            pos: dp(10), root.height - dp(50)
+            on_release: app.root.current = "menu"
+
+        # Route qui défile (2 images qui se suivent)
+        Image:
+            source: "assets/road.png"
+            size_hint: 1, None
+            height: root.height
+            allow_stretch: True
+            keep_ratio: False
+            y: root.scroll_y
+
+        Image:
+            source: "assets/road.png"
+            size_hint: 1, None
+            height: root.height
+            allow_stretch: True
+            keep_ratio: False
+            y: root.scroll_y + root.height
+
+        # Voiture pilotée par car_x
+        Image:
+            source: "assets/car.png"
+            size_hint: None, None
+            size: dp(80), dp(160)
+            x: root.car_x - self.width / 2
+            y: dp(50)
+
+        # Distance
+        Label:
+            text: "Distance : {:.1f} m".format(root.distance)
+            size_hint: None, None
+            size: dp(200), dp(40)
+            pos: dp(10), dp(10)
+            color: 1, 1, 1, 1
