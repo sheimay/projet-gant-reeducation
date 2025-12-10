@@ -145,7 +145,7 @@
                             size_hint: None, None
                             size: dp(22), dp(22)
                             pos_hint: {"right": 0.95, "top": 0.95}
-                            opacity: 0.85
+                            opacity: 0
 
                 # -------- Carte 3 : Jump --------
                 Button:
@@ -213,7 +213,7 @@
 
         # Route qui défile (2 images qui se suivent)
         Image:
-            source: "assets/road.png"
+            source: "assets/background.png"
             size_hint: 1, None
             height: root.height
             allow_stretch: True
@@ -221,7 +221,7 @@
             y: root.scroll_y
 
         Image:
-            source: "assets/road.png"
+            source: "assets/background.png"
             size_hint: 1, None
             height: root.height
             allow_stretch: True
