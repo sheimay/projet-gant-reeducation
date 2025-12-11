@@ -1,6 +1,7 @@
 #:kivy 2.2.0
 #:import dp kivy.metrics.dp
 
+
 <MenuScreen>:
     FloatLayout:
         # --- Fond avec le gant ---
@@ -18,6 +19,7 @@
             size_hint: 0.9, 0.7
             pos_hint: {"center_x": 0.5, "center_y": 0.6}
 
+            # Titre
             Label:
                 text: "Programme de Rééducation Interactive"
                 font_size: "28sp"
@@ -27,6 +29,7 @@
                 valign: "middle"
                 text_size: self.size
 
+            # Sous-titre
             Label:
                 text: "Choisissez un mini-jeu pour travailler vos mouvements avec le gant."
                 font_size: "16sp"
@@ -35,7 +38,7 @@
                 valign: "middle"
                 text_size: self.size
 
-            # Cartes de jeux (navigation horizontale)
+            # --- Cartes de jeux (navigation horizontale) ---
             BoxLayout:
                 orientation: "horizontal"
                 spacing: dp(20)
@@ -46,8 +49,7 @@
                     background_normal: ""
                     background_color: 0, 0, 0, 0
                     size_hint_x: 1
-                    on_release:
-                        app.root.current = "game"
+                    on_release: app.root.current = "game"
 
                     canvas.before:
                         Color:
@@ -94,13 +96,12 @@
                             pos_hint: {"right": 0.95, "top": 0.95}
                             opacity: 0.85
 
-                # -------- Carte 2 : Tri de Perles --------
+                # -------- Carte 2 : Piano (index / majeur) --------
                 Button:
                     background_normal: ""
                     background_color: 0, 0, 0, 0
                     size_hint_x: 1
-                    on_release:
-                        app.root.current = "game"  # plus tard: autre écran
+                    on_release: app.root.current = "piano"
 
                     canvas.before:
                         Color:
@@ -118,13 +119,13 @@
                             size_hint: 1, 1
 
                             Image:
-                                source: "assets/icon_beads.png"
+                                source: "assets/icon_piano.png"   # adapte le nom si besoin
                                 allow_stretch: True
                                 keep_ratio: True
                                 size_hint_y: 0.6
 
                             Label:
-                                text: "Tri de Perles"
+                                text: "Jeu Piano"
                                 font_size: "18sp"
                                 bold: True
                                 color: 0.08, 0.13, 0.24, 1
@@ -133,7 +134,7 @@
                                 text_size: self.size
 
                             Label:
-                                text: "Flexion précise\ndes doigts"
+                                text: "Coordination\nindex / majeur"
                                 font_size: "14sp"
                                 color: 0.25, 0.35, 0.5, 1
                                 halign: "center"
@@ -145,15 +146,14 @@
                             size_hint: None, None
                             size: dp(22), dp(22)
                             pos_hint: {"right": 0.95, "top": 0.95}
-                            opacity: 0
+                            opacity: 0.85
 
                 # -------- Carte 3 : Jump --------
                 Button:
                     background_normal: ""
                     background_color: 0, 0, 0, 0
                     size_hint_x: 1
-                    on_release:
-                        app.root.current = "game"  # plus tard: autre écran
+                    on_release: app.root.current = "game"  # plus tard: autre écran "jump"
 
                     canvas.before:
                         Color:
@@ -243,3 +243,55 @@
             size: dp(200), dp(40)
             pos: dp(10), dp(10)
             color: 1, 1, 1, 1
+
+
+<PianoGameScreen>:
+    # --- Fond sans texte ---
+    canvas.before:
+        Rectangle:
+            source: "assets/piano_bg.jpg"
+            pos: self.pos
+            size: self.size
+
+    FloatLayout:
+
+        # --- Image du piano ---
+        Image:
+            source: "assets/piano_keys.png"
+            allow_stretch: True
+            keep_ratio: True
+            size_hint: 0.9, 0.25
+            pos_hint: {"center_x": 0.5, "y": 0.15}
+
+        # --- Légende des touches (INDEX / MAJEUR) ---
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: dp(20)
+            size_hint: 0.3, None
+            height: dp(80)
+            pos_hint: {"center_x": 0.5, "y": 0.05}
+
+            # Badge INDEX (jaune)
+            Image:
+                source: "assets/index_bouton.png"
+                allow_stretch: True
+                keep_ratio: True
+                opacity: 1.0 if root.index_badge_visible else 0.25
+
+            # Badge MAJEUR (orange)
+            Image:
+                source: "assets/majeur_bouton.png"
+                allow_stretch: True
+                keep_ratio: True
+                opacity: 1.0 if root.majeur_badge_visible else 0.25
+
+        # --- Bouton retour ---
+        Button:
+            text: "Retour au menu"
+            size_hint: 0.35, None
+            height: dp(40)
+            pos_hint: {"center_x": 0.5, "y": 0.02}
+            background_normal: ""
+            background_color: 0, 0, 0, 0.7
+            color: 1, 1, 1, 1
+            on_release: app.root.current = "menu"

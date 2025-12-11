@@ -7,6 +7,8 @@ from kivy.clock import Clock
 
 from hand_state import HandCalibrator
 from serial_reader import SerialHandReader
+from piano_game import PianoGameScreen
+
 
 # Charger le KV
 Builder.load_file("game.kv")
@@ -136,8 +138,11 @@ class GantJeuApp(App):
     def build(self):
         sm = ScreenManager()
         sm.add_widget(MenuScreen(name="menu"))
-        sm.add_widget(GameScreen(name="game"))
+        sm.add_widget(GameScreen(name="game"))          # voiture
+        sm.add_widget(PianoGameScreen(name="piano"))    # piano
+        # plus tard : sm.add_widget(JumpGameScreen(name="jump"))
         return sm
+
 
 
 if __name__ == "__main__":

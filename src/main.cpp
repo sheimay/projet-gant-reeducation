@@ -1,8 +1,8 @@
 // ====== CAPTEURS ANALOGIQUES ======
-// A0 : capteur de flexion du pouce
-// A1 : capteur de flexion de l'index
-// A2 : capteur FSR du pouce
-// A3 : capteur FSR de l'index
+// A0 : capteur de flexion du majeur # vert 
+// A1 : capteur de flexion de l'index # jaune 
+// A2 : capteur FSR du pouce #bleu
+// A3 : capteur FSR de l'index # blanc
 
 #include <Arduino.h>
 #include <Arduino_BMI270_BMM150.h>
