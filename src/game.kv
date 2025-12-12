@@ -1,10 +1,9 @@
 #:kivy 2.2.0
 #:import dp kivy.metrics.dp
 
-
 <MenuScreen>:
     FloatLayout:
-        # --- Fond avec le gant ---
+        # --- Fond du menu ---
         Image:
             source: "assets/menu_background.png"
             allow_stretch: True
@@ -12,7 +11,7 @@
             size: root.width, root.height
             pos: 0, 0
 
-        # --- Contenu principal (titre + cartes) ---
+        # --- Contenu principal ---
         BoxLayout:
             orientation: "vertical"
             spacing: dp(24)
@@ -38,11 +37,11 @@
                 valign: "middle"
                 text_size: self.size
 
-            # --- Cartes de jeux (navigation horizontale) ---
+            # --- Cartes de jeux (3 encadrés) ---
             BoxLayout:
                 orientation: "horizontal"
                 spacing: dp(20)
-                size_hint_y: 0.7
+                size_hint_y: 0.6
 
                 # -------- Carte 1 : Guidage Voiture --------
                 Button:
@@ -53,50 +52,33 @@
 
                     canvas.before:
                         Color:
-                            rgba: 1, 1, 1, 0.96
+                            rgba: 1, 1, 1, 1
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
                             radius: [24, 24, 24, 24]
 
-                    FloatLayout:
-                        BoxLayout:
-                            orientation: "vertical"
-                            padding: dp(16)
-                            spacing: dp(12)
-                            size_hint: 1, 1
-
-                            Image:
-                                source: "assets/icon_car.png"
-                                allow_stretch: True
-                                keep_ratio: True
-                                size_hint_y: 0.6
-
-                            Label:
-                                text: "Guidage Voiture"
-                                font_size: "18sp"
-                                bold: True
-                                color: 0.08, 0.13, 0.24, 1
-                                halign: "center"
-                                valign: "middle"
-                                text_size: self.size
-
-                            Label:
-                                text: "Contrôle latéral\n& stabilité du poignet"
-                                font_size: "14sp"
-                                color: 0.25, 0.35, 0.5, 1
-                                halign: "center"
-                                valign: "middle"
-                                text_size: self.size
+                    BoxLayout:
+                        orientation: "vertical"
+                        padding: dp(16)
+                        spacing: dp(12)
 
                         Image:
-                            source: "assets/icon_sparkle.png"
-                            size_hint: None, None
-                            size: dp(22), dp(22)
-                            pos_hint: {"right": 0.95, "top": 0.95}
-                            opacity: 0.85
+                            source: "assets/icon_car.png"
+                            allow_stretch: True
+                            keep_ratio: True
+                            size_hint_y: 0.7
 
-                # -------- Carte 2 : Piano (index / majeur) --------
+                        Label:
+                            text: "Guidage voiture"
+                            font_size: "16sp"
+                            bold: True
+                            color: 0.08, 0.13, 0.24, 1
+                            halign: "center"
+                            valign: "middle"
+                            text_size: self.size
+
+                # -------- Carte 2 : Piano --------
                 Button:
                     background_normal: ""
                     background_color: 0, 0, 0, 0
@@ -105,101 +87,66 @@
 
                     canvas.before:
                         Color:
-                            rgba: 1, 1, 1, 0.96
+                            rgba: 1, 1, 1, 1
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
                             radius: [24, 24, 24, 24]
 
-                    FloatLayout:
-                        BoxLayout:
-                            orientation: "vertical"
-                            padding: dp(16)
-                            spacing: dp(12)
-                            size_hint: 1, 1
-
-                            Image:
-                                source: "assets/icon_piano.png"   # adapte le nom si besoin
-                                allow_stretch: True
-                                keep_ratio: True
-                                size_hint_y: 0.6
-
-                            Label:
-                                text: "Jeu Piano"
-                                font_size: "18sp"
-                                bold: True
-                                color: 0.08, 0.13, 0.24, 1
-                                halign: "center"
-                                valign: "middle"
-                                text_size: self.size
-
-                            Label:
-                                text: "Coordination\nindex / majeur"
-                                font_size: "14sp"
-                                color: 0.25, 0.35, 0.5, 1
-                                halign: "center"
-                                valign: "middle"
-                                text_size: self.size
+                    BoxLayout:
+                        orientation: "vertical"
+                        padding: dp(16)
+                        spacing: dp(12)
 
                         Image:
-                            source: "assets/icon_sparkle.png"
-                            size_hint: None, None
-                            size: dp(22), dp(22)
-                            pos_hint: {"right": 0.95, "top": 0.95}
-                            opacity: 0.85
+                            source: "assets/icon_piano.png"
+                            allow_stretch: True
+                            keep_ratio: True
+                            size_hint_y: 0.7
+
+                        Label:
+                            text: "Jeu piano"
+                            font_size: "16sp"
+                            bold: True
+                            color: 0.08, 0.13, 0.24, 1
+                            halign: "center"
+                            valign: "middle"
+                            text_size: self.size
 
                 # -------- Carte 3 : Jump --------
                 Button:
                     background_normal: ""
                     background_color: 0, 0, 0, 0
                     size_hint_x: 1
-                    on_release: app.root.current = "game"  # plus tard: autre écran "jump"
+                    on_release: app.root.current = "game"  # plus tard: "jump"
 
                     canvas.before:
                         Color:
-                            rgba: 1, 1, 1, 0.96
+                            rgba: 1, 1, 1, 1
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
                             radius: [24, 24, 24, 24]
 
-                    FloatLayout:
-                        BoxLayout:
-                            orientation: "vertical"
-                            padding: dp(16)
-                            spacing: dp(12)
-                            size_hint: 1, 1
-
-                            Image:
-                                source: "assets/icon_jump.png"
-                                allow_stretch: True
-                                keep_ratio: True
-                                size_hint_y: 0.6
-
-                            Label:
-                                text: "Jump"
-                                font_size: "18sp"
-                                bold: True
-                                color: 0.08, 0.13, 0.24, 1
-                                halign: "center"
-                                valign: "middle"
-                                text_size: self.size
-
-                            Label:
-                                text: "Force d’appui\n& réactivité"
-                                font_size: "14sp"
-                                color: 0.25, 0.35, 0.5, 1
-                                halign: "center"
-                                valign: "middle"
-                                text_size: self.size
+                    BoxLayout:
+                        orientation: "vertical"
+                        padding: dp(16)
+                        spacing: dp(12)
 
                         Image:
-                            source: "assets/icon_sparkle.png"
-                            size_hint: None, None
-                            size: dp(22), dp(22)
-                            pos_hint: {"right": 0.95, "top": 0.95}
-                            opacity: 0.85
+                            source: "assets/icon_jump.png"
+                            allow_stretch: True
+                            keep_ratio: True
+                            size_hint_y: 0.7
 
+                        Label:
+                            text: "Jump"
+                            font_size: "16sp"
+                            bold: True
+                            color: 0.08, 0.13, 0.24, 1
+                            halign: "center"
+                            valign: "middle"
+                            text_size: self.size
 
 <GameScreen>:
     FloatLayout:
@@ -260,16 +207,16 @@
             source: "assets/piano_keys.png"
             allow_stretch: True
             keep_ratio: True
-            size_hint: 0.9, 0.25
-            pos_hint: {"center_x": 0.5, "y": 0.15}
+            size_hint: 0.45, 0.45
+            pos_hint: {"center_x": 0.68, "y": 0.17}
 
         # --- Légende des touches (INDEX / MAJEUR) ---
         BoxLayout:
             orientation: "horizontal"
             spacing: dp(20)
-            size_hint: 0.3, None
+            size_hint: 0.22, None
             height: dp(80)
-            pos_hint: {"center_x": 0.5, "y": 0.05}
+            pos_hint: {"center_x": 0.68, "y": 0.52}
 
             # Badge INDEX (jaune)
             Image:
