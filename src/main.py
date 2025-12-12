@@ -147,3 +147,4 @@ class GantJeuApp(App):
 
 if __name__ == "__main__":
     GantJeuApp().run()
+
