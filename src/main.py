@@ -31,7 +31,7 @@ class GameScreen(Screen):
         # ---- LECTURE SERIE + CALIB ----
         # ADAPTE LE PORT ICI (très important)
         self.serial_reader = SerialHandReader(
-            port="/dev/cu.usbmodem11201",  # <-- à modifier 
+            port="/dev/cu.usbmodem1101",  # <-- à modifier 
             baudrate=115200,
         )
         self.calib = HandCalibrator()
