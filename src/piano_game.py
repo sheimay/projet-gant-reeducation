@@ -3,15 +3,18 @@
 from kivy.uix.screenmanager import Screen
 from kivy.properties import NumericProperty, StringProperty, BooleanProperty
 from kivy.clock import Clock
+from kivy.core.audio import SoundLoader  # 🔊 pour les sons
 
 from serial_reader import SerialHandReader
 from hand_state import HandState
 
 import random
 
-# Mets False pour tester l'interface sans Arduino branché
+# Mets True quand tu voudras tester avec l'Arduino branché
 USE_ARDUINO = False
 
+
+# ---------- Utilitaires capteurs ----------
 
 def _norm(value, vmin, vmax):
     """Normalise value entre 0 et 1 avec saturation."""
@@ -30,11 +33,10 @@ def detect_fingers_pressed(state: HandState):
     Retourne (index_pressed, majeur_pressed) à partir de HandState.
 
     Hypothèse actuelle :
-      - state.flex_index = capteur sur INDEX
-      - state.flex_thumb = capteur sur MAJEUR
-    Tu pourras adapter quand tu auras branché les capteurs.
+      - state.flex_index = capteur sur l'INDEX
+      - state.flex_thumb = capteur sur le MAJEUR
     """
-    # TODO : ajuste ces min/max après avoir observé tes vraies valeurs
+    # TODO : ajuste ces min/max avec tes vraies valeurs
     index_norm = _norm(state.flex_index, vmin=300, vmax=800)
     majeur_norm = _norm(state.flex_thumb, vmin=300, vmax=800)
 
@@ -46,63 +48,75 @@ def detect_fingers_pressed(state: HandState):
     return index_pressed, majeur_pressed
 
 
+# ---------- Écran du mini-jeu piano ----------
+
 class PianoGameScreen(Screen):
     """
-    Mini-jeu "Piano" :
-      - le jeu affiche une séquence de doigts à jouer ("index" / "majeur")
-      - le patient doit plier le bon doigt
+    Mini-jeu "Piano" tour par tour :
+
+      - le jeu génère une séquence de "index" / "majeur"
+      - pour chaque tour, un seul doigt est attendu
+      - le patient a une fenêtre de temps pour fléchir le bon doigt
+      - si réussi -> note validée + SON de piano
     """
-    score = NumericProperty(0)
+
+    score = NumericProperty(0)             # nb de notes réussies
     expected_finger = StringProperty("index")  # "index" ou "majeur"
 
-    # pour l’affichage des touches (allumées / éteintes)
+    # Pour l'affichage temps réel des doigts (si besoin dans l'UI)
     index_active = BooleanProperty(False)
     majeur_active = BooleanProperty(False)
-    
-    # ✅ visibilité/clignement des badges de légende
+
+    # Pour le clignement des badges INDEX / MAJEUR
     index_badge_visible = BooleanProperty(False)
     majeur_badge_visible = BooleanProperty(False)
-
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         if USE_ARDUINO:
-            # ⚠️ mets ici le bon port quand tu testeras avec le gant
+            # ⚠️ adapte le port série à ton PC
             self.serial_reader = SerialHandReader(
-                port="COM3",   # ex: "COM4" ou autre selon ton PC
+                port="COM3",
                 baudrate=115200,
             )
         else:
-            # mode sans Arduino : pas de lecteur série
             self.serial_reader = None
 
+        # Séquence de doigts à jouer : ["index", "majeur", ...]
+        self.sequence: list[str] = []
+        self.current_step: int = 0
+
+        # Gestion d'un "tour"
+        self.note_window = 2.0      # durée max d'un tour (en secondes)
+        self.note_timer = 0.0       # temps écoulé depuis le début du tour
+        self.note_resolved = False  # True si tour déjà validé (ou raté)
+
+        # Pour le clignement visuel
+        self._badge_blink_timer = 0.0
+
+        # Pour détecter des "taps" plus tard si besoin
         self._prev_index_pressed = False
         self._prev_majeur_pressed = False
 
-        self.sequence = []      # liste de "index" / "majeur"
-        self.current_step = 0   # index de la note actuelle
-        self._debug_time = 0.0  # pour l’animation en mode sans Arduino
+        # 🔊 Chargement des sons (index / majeur)
+        self.sound_index = SoundLoader.load("assets/note_index.wav")
+        self.sound_majeur = SoundLoader.load("assets/note_majeur.wav")
 
-                # Timers pour le clignement / alternance des badges
-        self._badge_timer = 0.0      # pour le clignement rapide
-        self._sequence_timer = 0.0   # pour changer de doigt toutes les 5 s
-        self._current_badge = "index"
+        # Optionnel : régler un volume plus doux
+        if self.sound_index:
+            self.sound_index.volume = 0.8
+        if self.sound_majeur:
+            self.sound_majeur.volume = 0.8
 
-    # -------- Cycle de vie de l'écran --------
+    # ----- Cycle de vie de l'écran -----
 
     def on_pre_enter(self):
-        """Appelé automatiquement quand on arrive sur l'écran 'piano'."""
+        """Appelé quand on arrive sur l'écran."""
         self.score = 0
         self.generate_new_sequence()
-
-        # ✅ état initial des badges
-        self._badge_timer = 0.0
-        self._sequence_timer = 0.0
-        self._current_badge = "index"
-        self.index_badge_visible = True
-        self.majeur_badge_visible = False
-        self.generate_new_sequence()
+        self.current_step = 0
+        self.start_new_note()
 
         if self.serial_reader is not None:
             self.serial_reader.start()
@@ -110,97 +124,116 @@ class PianoGameScreen(Screen):
         Clock.schedule_interval(self.update_game, 1.0 / 60.0)
 
     def on_leave(self):
-        """Appelé automatiquement quand on quitte l'écran 'piano'."""
+        """Appelé quand on quitte l'écran."""
         Clock.unschedule(self.update_game)
 
         if self.serial_reader is not None:
             self.serial_reader.stop()
 
-    # -------- Logique du jeu --------
+    # ----- Gestion de la séquence / des tours -----
 
-    def generate_new_sequence(self, length=8):
-        """Génère une nouvelle séquence pseudo-aléatoire de doigts."""
+    def generate_new_sequence(self, length: int = 16):
+        """Crée une nouvelle séquence aléatoire de 'index' / 'majeur'."""
         self.sequence = [random.choice(["index", "majeur"]) for _ in range(length)]
         self.current_step = 0
-        if self.sequence:
-            self.expected_finger = self.sequence[0]
-        else:
-            self.expected_finger = "index"
 
-    def update_game(self, dt):
-        """Boucle de jeu appelée ~60 fois par seconde."""
-        # --- Gestion du clignement des badges (indication de flexion) ---
-        self._badge_timer += dt
-        self._sequence_timer += dt
+    def start_new_note(self):
+        """
+        Démarre un nouveau "tour" :
+          - fixe le doigt attendu
+          - réinitialise les timers
+        """
+        # Si on est au bout de la séquence, on en recrée une
+        if not self.sequence or self.current_step >= len(self.sequence):
+            self.generate_new_sequence()
 
-        # clignement rapide (~2 fois par seconde)
-        blink_on = int(self._badge_timer * 2) % 2 == 0
+        self.expected_finger = self.sequence[self.current_step]
+        self.note_timer = 0.0
+        self.note_resolved = False
+        self._badge_blink_timer = 0.0
 
-        if self._current_badge == "index":
+    def advance_to_next_note(self):
+        """Passe à la note suivante dans la séquence."""
+        self.current_step += 1
+        self.start_new_note()
+
+    def _play_success_sound(self):
+        """Joue le son correspondant au doigt attendu."""
+        if self.expected_finger == "index" and self.sound_index:
+            # on stop avant play au cas où le son est déjà en cours
+            self.sound_index.stop()
+            self.sound_index.play()
+        elif self.expected_finger == "majeur" and self.sound_majeur:
+            self.sound_majeur.stop()
+            self.sound_majeur.play()
+
+    def validate_current_note(self):
+        """Appelé quand le patient a fléchi le bon doigt dans la fenêtre de temps."""
+        if self.note_resolved:
+            return  # déjà traité
+
+        self.note_resolved = True
+        self.score += 1
+
+        # 🔊 jouer le son correspondant
+        self._play_success_sound()
+
+        # on passe directement à la note suivante
+        self.advance_to_next_note()
+
+    def fail_current_note(self):
+        """Appelé quand la fenêtre de temps est écoulée sans bonne flexion."""
+        if self.note_resolved:
+            return
+        self.note_resolved = True
+        # plus tard : feedback visuel "raté" si tu veux
+        self.advance_to_next_note()
+
+    # ----- Boucle de jeu -----
+
+    def update_game(self, dt: float):
+        """Boucle appelée ~60 fois par seconde."""
+        # --- Gestion du temps du tour ---
+        self.note_timer += dt
+        if self.note_timer >= self.note_window and not self.note_resolved:
+            # temps écoulé -> note ratée
+            self.fail_current_note()
+            return
+
+        # --- Clignement du badge du doigt attendu ---
+        self._badge_blink_timer += dt
+        blink_on = int(self._badge_blink_timer * 2) % 2 == 0  # ~2 fois par seconde
+
+        if self.expected_finger == "index":
             self.index_badge_visible = blink_on
             self.majeur_badge_visible = False
         else:
             self.majeur_badge_visible = blink_on
             self.index_badge_visible = False
 
-        # changement de doigt toutes les 5 secondes
-        if self._sequence_timer >= 5.0:
-            self._sequence_timer = 0.0
-            self._current_badge = "majeur" if self._current_badge == "index" else "index"
-
-        # (optionnel) aligner la logique de jeu sur le doigt attendu
-        self.expected_finger = self._current_badge
-
-
-        # --- MODE SANS ARDUINO : juste pour tester l'UI ---
+        # --- Mode sans Arduino : démo visuelle, pas de contrôle réel ---
         if self.serial_reader is None:
-            self._debug_time += dt
-            # alterne toutes les 0.5 secondes
-            blink = int(self._debug_time * 2) % 2 == 0
-            self.index_active = blink
-            self.majeur_active = not blink
             return
 
-        # --- MODE AVEC ARDUINO ---
+        # --- Mode avec Arduino : lecture réelle du gant ---
         state = self.serial_reader.get_latest_state()
         if state is None:
             return
 
         index_pressed, majeur_pressed = detect_fingers_pressed(state)
 
-        # mise à jour visuelle
+        # états pour la partie visuelle
         self.index_active = index_pressed
         self.majeur_active = majeur_pressed
 
-        # détection d'un "tap" = passage relâché -> pressé
-        new_index_tap = index_pressed and not self._prev_index_pressed
-        new_majeur_tap = majeur_pressed and not self._prev_majeur_pressed
+        # Vérifier si la note actuelle est réussie
+        if not self.note_resolved:
+            if self.expected_finger == "index" and index_pressed:
+                self.validate_current_note()
+            elif self.expected_finger == "majeur" and majeur_pressed:
+                self.validate_current_note()
 
-        if new_index_tap:
-            self.handle_finger_tap("index")
-        if new_majeur_tap:
-            self.handle_finger_tap("majeur")
-
+        # mémorisation (si plus tard tu veux détecter des "taps")
         self._prev_index_pressed = index_pressed
         self._prev_majeur_pressed = majeur_pressed
 
-    def handle_finger_tap(self, finger):
-        """Appelé quand un doigt vient de se fléchir (tap)."""
-        if not self.sequence:
-            return
-
-        expected = self.sequence[self.current_step]
-
-        if finger == expected:
-            # ✅ Bon doigt
-            self.score += 1
-            self.current_step += 1
-
-            if self.current_step >= len(self.sequence):
-                # Séquence terminée -> nouvelle séquence
-                self.generate_new_sequence()
-            else:
-                self.expected_finger = self.sequence[self.current_step]
-        else:
-            # ❌ Mauvais doigt : tu pourras ajouter plus tard un feedback spécial
-            pass
