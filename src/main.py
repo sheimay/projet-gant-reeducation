@@ -4,10 +4,15 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import NumericProperty
 from kivy.core.window import Window
 from kivy.clock import Clock
-
+import random
+from kivy.uix.image import Image
+from kivy.metrics import dp
+from calibration_screen import CalibrationScreen
 from hand_state import HandCalibrator
 from serial_reader import SerialHandReader
 from piano_game import PianoGameScreen
+from jump_game import JumpGameScreen
+
 
 
 # Charger le KV
@@ -27,6 +32,10 @@ class GameScreen(Screen):
         super().__init__(**kwargs)
         self._update_event = None
         self.forward_speed = 200  # vitesse du décor (px/s)
+        self.obstacles = []           # liste d'Image obstacles
+        self.spawn_timer = 0.0
+        self.spawn_every = 1.2        # secondes (diminue => + d’obstacles)
+
 
         # ---- LECTURE SERIE + CALIB ----
         # ADAPTE LE PORT ICI (très important)
@@ -68,6 +77,11 @@ class GameScreen(Screen):
         if self._update_event is not None:
             self._update_event.cancel()
             self._update_event = None
+        layer = self.ids.get("obstacles_layer")
+        if layer:
+            layer.clear_widgets()
+            self.obstacles.clear()
+
 
     def on_size(self, *args):
         # Recentrer la voiture si la fenêtre change de taille
@@ -85,47 +99,93 @@ class GameScreen(Screen):
         self.car_x += delta_px
         self._clamp_car()
 
+    def get_road_bounds(self):
+        road_width_ratio = 0.40  # ajuste si besoin
+        center_x = self.width / 2
+        road_width = self.width * road_width_ratio
+        left = center_x - road_width / 2
+        right = center_x + road_width / 2
+        return left, right
+    
+    def spawn_obstacle(self):
+        layer = self.ids.obstacles_layer
+
+    # Zone "route" (à ajuster selon ton background)
+        road_left, road_right = self.get_road_bounds()
+        road_width = road_right - road_left
+
+    # --- Lanes (positions RELATIVES dans la route) ---
+    # 0.25 = gauche | 0.5 = centre | 0.75 = droite
+        lanes = [0.3,0.5, 0.7]
+        lane = random.choice(lanes)
+        size = dp(random.choice([55, 65, 75]))
+        x = random.uniform(road_left, road_right - size)
+        y = self.height + size
+
+    # 👉 ICI : choix aléatoire de l'obstacle
+        source = random.choice([
+        "assets/obstacle_cone.png",
+        "assets/obstacle_pothole.png",
+        ])
+
+        obs = Image(
+            source=source,   # ← on utilise le choix ici
+            size_hint=(None, None),
+            size=(size, size),
+            pos=(x, y),
+            allow_stretch=True,
+            keep_ratio=True,
+        )
+
+        layer.add_widget(obs)
+        self.obstacles.append(obs)
+    
     def update_game(self, dt):
-        # 1) Scroll du fond (comme avant)
+    # 1) Scroll fond
         if self.height > 0:
             self.scroll_y -= self.forward_speed * dt
             if self.scroll_y <= -self.height:
                 self.scroll_y += self.height
-
         self.distance += (self.forward_speed * dt) / 100.0
 
-        # 2) Lecture de l'état de la main
-        state = self.serial_reader.get_latest_state()
+    # 2) Obstacles (spawn + move) -> TOUJOURS, même si state None
+        self.spawn_timer += dt
+        if self.spawn_timer >= self.spawn_every:
+            self.spawn_timer = 0.0
+            self.spawn_obstacle()
 
+        to_remove = []
+        for obs in self.obstacles:
+            obs.y -= self.forward_speed * dt
+            if obs.top < 0:
+                to_remove.append(obs)
+
+        for obs in to_remove:
+            self.ids.obstacles_layer.remove_widget(obs)
+            self.obstacles.remove(obs)
+
+    # 3) Lecture main (peut être None)
+        state = self.serial_reader.get_latest_state()
         if state is None:
-            # Affiche une seule fois qu'on n'a pas encore de données
             if not self._no_state_logged:
                 print(">>> Aucun HandState reçu pour le moment.")
                 self._no_state_logged = True
             return
 
-        # Si on arrive ici, on a bien des données
         self._no_state_logged = False
 
-        # 3) Commande de direction à partir du gyroscope
-        # steering_from_gyro renvoie une valeur dans [-1, +1]
-        # On utilise gy comme axe par défaut
+    # 4) Direction voiture
         steer_raw = state.steering_from_gyro(sensitivity_deg_per_s=45.0)
-        # 45.0 => très sensible. Tu pourras augmenter à 60 ou 90 plus tard.
-
-        # Filtre exponentiel pour lisser un peu
         alpha = 0.3
         self._steer_filtered = (1 - alpha) * self._steer_filtered + alpha * steer_raw
 
-       
-        # 4) Application à la position de la voiture
-        # Gain fort pour bien voir l'effet
-        # self._steer_filtered ∈ [-1,1]
-        # On veut pouvoir aller de gauche à droite assez vite
-        gain_px_per_sec = 400  # px/s pour steer=1.0
+        gain_px_per_sec = 400
         delta_px = self._steer_filtered * gain_px_per_sec * dt
         self.move_car_pixels(delta_px)
 
+
+
+    
     def _clamp_car(self):
         margin = self.width * 0.05
         if self.car_x < margin:
@@ -137,14 +197,20 @@ class GameScreen(Screen):
 class GantJeuApp(App):
     def build(self):
         sm = ScreenManager()
+        sm.add_widget(CalibrationScreen(name="calibration"))
         sm.add_widget(MenuScreen(name="menu"))
-        sm.add_widget(GameScreen(name="game"))          # voiture
-        sm.add_widget(PianoGameScreen(name="piano"))    # piano
-        # plus tard : sm.add_widget(JumpGameScreen(name="jump"))
+        sm.add_widget(GameScreen(name="game")) # voiture
+        sm.add_widget(PianoGameScreen(name="piano")) # piano
+        sm.add_widget(JumpGameScreen(name="jump"))  # jump
+
+
         return sm
 
 
 
 if __name__ == "__main__":
     GantJeuApp().run()
+
+
+
 

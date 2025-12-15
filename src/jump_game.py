@@ -1,65 +1,131 @@
-# jump_game.py
-
 from kivy.uix.screenmanager import Screen
 from kivy.properties import NumericProperty, BooleanProperty
 from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.metrics import dp
 
 from serial_reader import SerialHandReader
 from hand_state import HandState
 
-# Mets True quand tu voudras tester avec l'Arduino branché
 USE_ARDUINO = False
+SERIAL_PORT = "COM3"
+SERIAL_BAUD = 115200
 
 
-def _norm(value, vmin, vmax):
-    """Normalise value entre 0 et 1 (saturation)."""
+def _norm(value: float, vmin: float, vmax: float) -> float:
     if vmax <= vmin:
         return 0.0
     x = (value - vmin) / float(vmax - vmin)
-    return 0.0 if x < 0.0 else 1.0 if x > 1.0 else x
+    if x < 0.0:
+        return 0.0
+    if x > 1.0:
+        return 1.0
+    return x
 
 
 class JumpGameScreen(Screen):
-    # Debug UI (facultatif)
+
+    # ===== Fond défilant (bind KV) =====
+    bg1_x = NumericProperty(0.0)
+    bg2_x = NumericProperty(0.0)
+    scroll_speed = NumericProperty(220.0)  # px/s
+
+    # ===== UI / Game =====
+    score = NumericProperty(0)
+
+    # Avatar (bind KV)
+    avatar_y = NumericProperty(0.0)
+    avatar_x = NumericProperty(0.0)
+
+    # (si ton KV les utilise)
+    avatar_baseline = NumericProperty(0.0)
+    avatar_left_trim = NumericProperty(0.0)
+
+    # Debug pinch
     thumb_active = BooleanProperty(False)
     index_active = BooleanProperty(False)
     pinch_active = BooleanProperty(False)
 
-    score = NumericProperty(0)
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        # Pour éviter que on_size ré-initialise en boucle
+        self._bg_inited = False
+
+        # --------- Série Arduino ----------
+        self.serial_reader: SerialHandReader | None = None
         if USE_ARDUINO:
-            self.serial_reader = SerialHandReader(port="COM3", baudrate=115200)
-        else:
-            self.serial_reader = None
+            self.serial_reader = SerialHandReader(port=SERIAL_PORT, baudrate=SERIAL_BAUD)
 
-        # -------- Réglages détection pince --------
-        self.THUMB_T = 0.6          # seuil (normalisé 0..1)
-        self.INDEX_T = 0.6
-        self.SYNC_WINDOW = 0.20     # secondes (200 ms)
+        # --------- Détection pince (FSR pouce + index) ----------
+        self.THUMB_T = 0.60
+        self.INDEX_T = 0.60
+        self.SYNC_WINDOW = 0.20
 
-        # TODO: adapte ces min/max avec tes vraies pressions
-        self.P_MIN = 100            # pression au repos
-        self.P_MAX = 900            # pression forte
+        self.P_MIN = 100
+        self.P_MAX = 900
 
-        # -------- États internes --------
-        self._t = 0.0               # temps interne (seconds)
-        self._thumb_press_time = None
-        self._index_press_time = None
+        self._t = 0.0
+        self._thumb_press_time: float | None = None
+        self._index_press_time: float | None = None
         self._was_pinch = False
 
-        # Cooldown optionnel (évite les doubles sauts même si bruit)
         self.JUMP_COOLDOWN = 0.25
         self._last_jump_time = -999.0
 
-        # Avatar simple (physique minimaliste)
-        self.y = 0.0
+        # --------- Physique saut ----------
         self.vy = 0.0
-        self.gravity = -1800.0      # px/s²
-        self.jump_impulse = 750.0   # px/s
-        self.ground_y = 0.0
+        self.gravity = -1800.0
+        self.jump_impulse = 750.0
+        self.ground_y = dp(100)
+
+        # ===== Saut à amplitude variable =====
+        self.min_impulse = 520.0     # petit saut
+        self.max_impulse = 980.0     # grand saut
+        self.strength_exp = 1.3      # courbe de sensibilité (1.0 = linéaire)
+        self.last_pinch_strength = 0.0
+
+
+        self._keyboard_bound = False
+
+    # ============================================================
+    # Fond défilant
+    # ============================================================
+
+    def on_size(self, *args):
+        """
+        Appelé quand la taille de l'écran change.
+        On initialise le fond UNE SEULE FOIS quand width est valide.
+        """
+        if self.width <= 1:
+            return
+
+        if not self._bg_inited:
+            self.bg1_x = 0
+            self.bg2_x = self.width
+            self._bg_inited = True
+
+    def update_background(self, dt: float):
+        """Défilement + boucle infinie."""
+        # Si pas encore initialisé (ex: width==0 au départ), on n’avance pas
+        if not self._bg_inited or self.width <= 1:
+            return
+
+        w = self.width
+
+        self.bg1_x -= self.scroll_speed * dt
+        self.bg2_x -= self.scroll_speed * dt
+
+        # Rebouclage
+        if self.bg1_x <= -w:
+            self.bg1_x = self.bg2_x + w
+
+        if self.bg2_x <= -w:
+            self.bg2_x = self.bg1_x + w
+
+    # ============================================================
+    # Lifecycle
+    # ============================================================
 
     def on_pre_enter(self):
         print(">>> JUMP SCREEN OPENED <<<")
@@ -71,99 +137,120 @@ class JumpGameScreen(Screen):
         self._was_pinch = False
         self._last_jump_time = -999.0
 
-        self.y = self.ground_y
+        self.avatar_y = self.ground_y
         self.vy = 0.0
 
         if self.serial_reader is not None:
             self.serial_reader.start()
 
+        if not self._keyboard_bound:
+            Window.bind(on_key_down=self._on_key_down)
+            self._keyboard_bound = True
+
         Clock.schedule_interval(self.update_game, 1.0 / 60.0)
 
     def on_leave(self):
         Clock.unschedule(self.update_game)
+
         if self.serial_reader is not None:
             self.serial_reader.stop()
 
-    # ------------------ Détection pince ------------------
+        if self._keyboard_bound:
+            Window.unbind(on_key_down=self._on_key_down)
+            self._keyboard_bound = False
 
-    def _read_pressures(self, state: HandState):
-        """
-        Lecture des capteurs de pression :
-      - fsr_thumb : pouce
-      - fsr_index : index
-    """
-        thumb_raw = state.fsr_thumb
-        index_raw = state.fsr_index
+    # ============================================================
+    # Input clavier (test)
+    # ============================================================
 
-        thumb_n = _norm(thumb_raw, self.P_MIN, self.P_MAX)
-        index_n = _norm(index_raw, self.P_MIN, self.P_MAX)
+    def _on_key_down(self, window, keycode, scancode, codepoint, modifiers):
+        if keycode and len(keycode) > 1 and keycode[1] == "space":
+            self.do_jump()
+            return True
+        return False
+
+    # ============================================================
+    # Détection pince (Arduino)
+    # ============================================================
+
+    def _read_pressures(self, state: HandState) -> tuple[float, float]:
+        thumb_n = _norm(state.fsr_thumb, self.P_MIN, self.P_MAX)
+        index_n = _norm(state.fsr_index, self.P_MIN, self.P_MAX)
         return thumb_n, index_n
 
-    def _pinch_event(self, thumb_n: float, index_n: float) -> bool:
-        """
-        Retourne True UNIQUEMENT au moment où la pince est détectée (front montant).
-        """
+    def _pinch_event(self, thumb_n: float, index_n: float):
+
         thumb_pressed = thumb_n > self.THUMB_T
         index_pressed = index_n > self.INDEX_T
 
-        # debug UI
         self.thumb_active = thumb_pressed
         self.index_active = index_pressed
 
-        # mémorise le moment où chaque doigt dépasse le seuil
         if thumb_pressed and self._thumb_press_time is None:
             self._thumb_press_time = self._t
         if index_pressed and self._index_press_time is None:
             self._index_press_time = self._t
 
-        # relâchement => réarmement des temps
         if not thumb_pressed:
             self._thumb_press_time = None
         if not index_pressed:
             self._index_press_time = None
 
-        # pince “valide” si les deux sont pressés et arrivés dans la fenêtre
         pinch_now = False
-        if thumb_pressed and index_pressed and self._thumb_press_time is not None and self._index_press_time is not None:
-            if abs(self._thumb_press_time - self._index_press_time) <= self.SYNC_WINDOW:
-                pinch_now = True
+        if (
+            thumb_pressed and index_pressed
+            and self._thumb_press_time is not None
+            and self._index_press_time is not None
+            and abs(self._thumb_press_time - self._index_press_time) <= self.SYNC_WINDOW
+        ):
+            pinch_now = True
 
         self.pinch_active = pinch_now
+        strength = min(thumb_n, index_n)  # 0..1 (le doigt le plus faible limite)
 
-        # front montant + cooldown anti-bruit
-        if pinch_now and not self._was_pinch and (self._t - self._last_jump_time) >= self.JUMP_COOLDOWN:
+        if pinch_now and (not self._was_pinch) and (self._t - self._last_jump_time) >= self.JUMP_COOLDOWN:
             self._was_pinch = True
             self._last_jump_time = self._t
-            return True
+            self.last_pinch_strength = strength
+            return True, strength
 
         if not pinch_now:
             self._was_pinch = False
 
-        return False
+        return False, 0.0
 
-    # ------------------ Mécanique saut ------------------
+    # ============================================================
+    # Physique saut
+    # ============================================================
 
-    def do_jump(self):
-        # saute uniquement si au sol
-        if self.y <= self.ground_y + 1.0:
-            self.vy = self.jump_impulse
+    def do_jump(self, strength: float = 1.0):
+        """Saute seulement si l’avatar est au sol, avec amplitude variable."""
+        if self.avatar_y <= self.ground_y + 1.0:
+            s = max(0.0, min(1.0, strength))   # clamp 0..1
+            s = s ** self.strength_exp         # courbe (progressif)
+
+            impulse = self.min_impulse + s * (self.max_impulse - self.min_impulse)
+            self.vy = impulse
 
     def update_physics(self, dt: float):
-        # gravité
         self.vy += self.gravity * dt
-        self.y += self.vy * dt
+        self.avatar_y += self.vy * dt
 
-        # sol
-        if self.y < self.ground_y:
-            self.y = self.ground_y
+        if self.avatar_y < self.ground_y:
+            self.avatar_y = self.ground_y
             self.vy = 0.0
 
-    # ------------------ Boucle jeu ------------------
+    # ============================================================
+    # Boucle jeu
+    # ============================================================
 
     def update_game(self, dt: float):
         self._t += dt
 
-        # sans Arduino: tu peux simuler rien (ou clavier plus tard)
+        # ✅ fond animé
+        self.update_background(dt)
+
+        # Arduino OFF
         if self.serial_reader is None:
             self.update_physics(dt)
             return
@@ -174,13 +261,10 @@ class JumpGameScreen(Screen):
             return
 
         thumb_n, index_n = self._read_pressures(state)
-        if thumb_n is None:
-            self.update_physics(dt)
-            return
 
-        # détection pince => jump
         if self._pinch_event(thumb_n, index_n):
-            self.do_jump()
-            self.score += 1  # ou score par obstacle plus tard
-
+            pinched, strength = self._pinch_event(thumb_n, index_n)
+            if pinched:
+                self.do_jump(strength)
+                self.score += 1
         self.update_physics(dt)

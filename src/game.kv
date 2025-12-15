@@ -1,9 +1,114 @@
 #:kivy 2.2.0
 #:import dp kivy.metrics.dp
 
+<CalibrationScreen>:
+    FloatLayout:
+
+        # ===== Background =====
+        Image:
+            source: "assets/bg_calibration.jpg"
+            size_hint: 1, 1
+            pos: 0, 0
+            allow_stretch: True
+            keep_ratio: True
+            fit_mode: "cover"
+            mipmap: True
+
+        # ===== Voile léger pour lisibilité (pas un rectangle) =====
+        Widget:
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 0.08
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+        # ===== Contenu centré =====
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(16)
+            size_hint: 0.82, None
+            height: dp(280)
+            pos_hint: {"center_x": 0.5, "center_y": 0.52}
+
+            # --- Titre ---
+            Label:
+                text: "Calibration (repos)"
+                font_size: "30sp"
+                bold: True
+                color: 0.08, 0.13, 0.24, 1
+                size_hint_y: None
+                height: dp(46)
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+            # --- Sous-texte ---
+            Label:
+                text: root.status
+                font_size: "16sp"
+                color: 0.2, 0.3, 0.45, 1
+                size_hint_y: None
+                height: dp(60)
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+            # --- Barre de progression style fin ---
+            ProgressBar:
+                max: 1
+                value: root.progress
+                size_hint_y: None
+                height: dp(12)
+
+            # ===== Boutons "pill" =====
+            BoxLayout:
+                orientation: "vertical"
+                spacing: dp(12)
+                size_hint_y: None
+                height: dp(120)
+
+                Button:
+                    text: "Démarrer"
+                    size_hint_y: None
+                    height: dp(54)
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: 1, 1, 1, 1
+                    bold: True
+                    font_size: "18sp"
+                    on_release: root.start_calibration()
+
+                    canvas.before:
+                        Color:
+                            rgba: 0.18, 0.46, 0.86, 0.95
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [28, 28, 28, 28]
+
+                Button:
+                    text: "Aller au menu"
+                    size_hint_y: None
+                    height: dp(52)
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: 0.08, 0.13, 0.24, 1
+                    bold: True
+                    font_size: "16sp"
+                    on_release: root.go_menu()
+
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.55
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [28, 28, 28, 28]
+
+
 <MenuScreen>:
     FloatLayout:
-        # --- Fond du menu ---
         Image:
             source: "assets/menu_background.png"
             allow_stretch: True
@@ -11,14 +116,12 @@
             size: root.width, root.height
             pos: 0, 0
 
-        # --- Contenu principal ---
         BoxLayout:
             orientation: "vertical"
             spacing: dp(24)
             size_hint: 0.9, 0.7
             pos_hint: {"center_x": 0.5, "center_y": 0.6}
 
-            # Titre
             Label:
                 text: "Programme de Rééducation Interactive"
                 font_size: "28sp"
@@ -28,7 +131,6 @@
                 valign: "middle"
                 text_size: self.size
 
-            # Sous-titre
             Label:
                 text: "Choisissez un mini-jeu pour travailler vos mouvements avec le gant."
                 font_size: "16sp"
@@ -37,132 +139,84 @@
                 valign: "middle"
                 text_size: self.size
 
-            # --- Cartes de jeux (3 encadrés) ---
             BoxLayout:
                 orientation: "horizontal"
                 spacing: dp(20)
                 size_hint_y: 0.6
 
-                # -------- Carte 1 : Guidage Voiture --------
-                Button:
-                    background_normal: ""
-                    background_color: 0, 0, 0, 0
-                    size_hint_x: 1
+                GameCard:
                     on_release: app.root.current = "game"
+                    icon: "assets/icon_car.png"
+                    title: "Guidage voiture"
 
-                    canvas.before:
-                        Color:
-                            rgba: 1, 1, 1, 1
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [24, 24, 24, 24]
-
-                    BoxLayout:
-                        orientation: "vertical"
-                        padding: dp(16)
-                        spacing: dp(12)
-
-                        Image:
-                            source: "assets/icon_car.png"
-                            allow_stretch: True
-                            keep_ratio: True
-                            size_hint_y: 0.7
-
-                        Label:
-                            text: "Guidage voiture"
-                            font_size: "16sp"
-                            bold: True
-                            color: 0.08, 0.13, 0.24, 1
-                            halign: "center"
-                            valign: "middle"
-                            text_size: self.size
-
-                # -------- Carte 2 : Piano --------
-                Button:
-                    background_normal: ""
-                    background_color: 0, 0, 0, 0
-                    size_hint_x: 1
+                GameCard:
                     on_release: app.root.current = "piano"
+                    icon: "assets/piano_keys.png"
+                    title: "Jeu piano"
 
-                    canvas.before:
-                        Color:
-                            rgba: 1, 1, 1, 1
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [24, 24, 24, 24]
+                GameCard:
+                    icon: "assets/icon_jump.png"
+                    title: "Jump"
+                    icon_scale: 1.25
+                    on_release: app.root.current = "jump"
 
-                    BoxLayout:
-                        orientation: "vertical"
-                        padding: dp(16)
-                        spacing: dp(12)
 
-                        Image:
-                            source: "assets/icon_piano.png"
-                            allow_stretch: True
-                            keep_ratio: True
-                            size_hint_y: 0.7
 
-                        Label:
-                            text: "Jeu piano"
-                            font_size: "16sp"
-                            bold: True
-                            color: 0.08, 0.13, 0.24, 1
-                            halign: "center"
-                            valign: "middle"
-                            text_size: self.size
-                            source: "assets/icon_sparkle.png"
-                            size_hint: None, None
-                            size: dp(22), dp(22)
-                            pos_hint: {"right": 0.95, "top": 0.95}
-                            opacity: 0.85
+<GameCard@ButtonBehavior+BoxLayout>:
+    icon: ""
+    title: ""
+    orientation: "vertical"
+    padding: dp(16)
+    spacing: dp(10)
+    size_hint_x: 1
 
-                # -------- Carte 3 : Jump --------
-                Button:
-                    background_normal: ""
-                    background_color: 0, 0, 0, 0
-                    size_hint_x: 1
-                    on_release: app.root.current = "game"  # plus tard: "jump"
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [24, 24, 24, 24]
 
-                    canvas.before:
-                        Color:
-                            rgba: 1, 1, 1, 1
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [24, 24, 24, 24]
+    # --- Zone icône (hauteur fixe pour homogénéiser) ---
+    AnchorLayout:
+        anchor_x: "center"
+        anchor_y: "top"
+        size_hint_y: None
+        height: dp(120)
+        padding: 0, dp(10), 0, 0   # ← DESCEND vraiment l’icône
 
-                    BoxLayout:
-                        orientation: "vertical"
-                        padding: dp(16)
-                        spacing: dp(12)
 
-                        Image:
-                            source: "assets/icon_jump.png"
-                            allow_stretch: True
-                            keep_ratio: True
-                            size_hint_y: 0.7
+        Image:
+            # si icon est vide -> on ne montre rien (évite le "bloc blanc")
+            source: root.icon if root.icon else ""
+            opacity: 1 if root.icon else 0
 
-                        Label:
-                            text: "Jump"
-                            font_size: "16sp"
-                            bold: True
-                            color: 0.08, 0.13, 0.24, 1
-                            halign: "center"
-                            valign: "middle"
-                            text_size: self.size
+            allow_stretch: True
+            keep_ratio: True
+
+            # l’icône s’adapte à la zone, sans déborder
+            size_hint: 1, 1
+
+    # --- Texte ---
+    AnchorLayout:
+        anchor_x: "center"
+        anchor_y: "center"
+        size_hint_y: None
+        height: dp(28)
+
+        Label:
+            text: root.title
+            bold: True
+            font_size: "16sp"
+            color: 0.08, 0.13, 0.24, 1
+            halign: "center"
+            valign: "middle"
+            text_size: self.size
+
 
 <GameScreen>:
     FloatLayout:
-        # Bouton retour
-        Button:
-            text: "Retour"
-            size_hint: None, None
-            size: dp(120), dp(40)
-            pos: dp(10), root.height - dp(50)
-            on_release: app.root.current = "menu"
-
         # Route qui défile (2 images qui se suivent)
         Image:
             source: "assets/background.png"
@@ -179,6 +233,9 @@
             allow_stretch: True
             keep_ratio: False
             y: root.scroll_y + root.height
+        # ✅ Couche obstacles (AU-DESSUS du background)
+        FloatLayout:
+            id: obstacles_layer
 
         # Voiture pilotée par car_x
         Image:
@@ -195,6 +252,18 @@
             size: dp(200), dp(40)
             pos: dp(10), dp(10)
             color: 1, 1, 1, 1
+
+        # --- Bouton retour ---
+        Button:
+            text: "Retour au menu"
+            size_hint: None, None
+            size: dp(220), dp(46)
+            pos_hint: {"center_x": 0.5, "y": 0.02}
+            background_normal: ""
+            background_color: 0, 0, 0, 0.7
+            color: 1, 1, 1, 1
+            on_release: app.root.current = "menu"
+
 
 
 <PianoGameScreen>:
@@ -247,3 +316,56 @@
             background_color: 0, 0, 0, 0.7
             color: 1, 1, 1, 1
             on_release: app.root.current = "menu"
+
+<JumpGameScreen>:
+    FloatLayout:
+
+        # =========================
+        # FOND DÉFILANT (2 IMAGES)
+        # =========================
+        Image:
+            source: "assets/background_jump.png"
+            x: root.bg1_x
+            y: 0
+            size_hint: None, None
+            size: root.width, root.height
+            allow_stretch: True
+            keep_ratio: False
+
+        Image:
+            source: "assets/background_jump.png"
+            x: root.bg2_x
+            y: 0
+            size_hint: None, None
+            size: root.width, root.height
+            allow_stretch: True
+            keep_ratio: False
+
+        # =========================
+        # AVATAR
+        # =========================
+        Image:
+            id: avatar
+            source: "assets/avatar_jump.png"
+            size_hint: None, None
+            size: dp(200), dp(200)
+
+            # Position horizontale : fixe, proche gauche
+            x: 0
+
+            # Position verticale : suit la physique (corrigée avec baseline)
+            y: root.avatar_y
+
+            # Optionnel : évite cache si tu modifies souvent le fichier
+            nocache: True
+
+        # =========================
+        # BOUTON RETOUR
+        # =========================
+        Button:
+            text: "Retour au menu"
+            size_hint: None, None
+            size: dp(140), dp(44)
+            pos_hint: {"x": 0.04, "y": 0.04}
+            on_release:
+                app.root.current = "menu"

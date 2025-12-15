@@ -236,4 +236,3 @@ class PianoGameScreen(Screen):
         # mémorisation (si plus tard tu veux détecter des "taps")
         self._prev_index_pressed = index_pressed
         self._prev_majeur_pressed = majeur_pressed
-
