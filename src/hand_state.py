@@ -95,37 +95,37 @@ class HandCalibrator:
         self.gy_offset = 0.0
         self.gz_offset = 0.0
 
-        def save_txt(self, path: str):
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(f"flex_thumb_rest={self.flex_thumb_rest}\n")
-                f.write(f"flex_index_rest={self.flex_index_rest}\n")
-                f.write(f"fsr_thumb_rest={self.fsr_thumb_rest}\n")
-                f.write(f"fsr_index_rest={self.fsr_index_rest}\n")
-                f.write(f"gx_offset={self.gx_offset}\n")
-                f.write(f"gy_offset={self.gy_offset}\n")
-                f.write(f"gz_offset={self.gz_offset}\n")
+    def save_txt(self, path: str):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(f"flex_thumb_rest={self.flex_thumb_rest}\n")
+            f.write(f"flex_index_rest={self.flex_index_rest}\n")
+            f.write(f"fsr_thumb_rest={self.fsr_thumb_rest}\n")
+            f.write(f"fsr_index_rest={self.fsr_index_rest}\n")
+            f.write(f"gx_offset={self.gx_offset}\n")
+            f.write(f"gy_offset={self.gy_offset}\n")
+            f.write(f"gz_offset={self.gz_offset}\n")
 
-        def load_txt(self, path: str) -> bool:
-            try:
-                data = {}
-                with open(path, "r", encoding="utf-8") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or "=" not in line:
-                            continue
-                        k, v = line.split("=", 1)
-                        data[k.strip()] = float(v.strip())
+    def load_txt(self, path: str) -> bool:
+        try:
+            data = {}
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or "=" not in line:
+                        continue
+                    k, v = line.split("=", 1)
+                    data[k.strip()] = float(v.strip())
 
-                self.flex_thumb_rest = data.get("flex_thumb_rest", self.flex_thumb_rest)
-                self.flex_index_rest = data.get("flex_index_rest", self.flex_index_rest)
-                self.fsr_thumb_rest = data.get("fsr_thumb_rest", self.fsr_thumb_rest)
-                self.fsr_index_rest = data.get("fsr_index_rest", self.fsr_index_rest)
-                self.gx_offset = data.get("gx_offset", self.gx_offset)
-                self.gy_offset = data.get("gy_offset", self.gy_offset)
-                self.gz_offset = data.get("gz_offset", self.gz_offset)
-                return True
-            except Exception:
-                return False
+            self.flex_thumb_rest = data.get("flex_thumb_rest", self.flex_thumb_rest)
+            self.flex_index_rest = data.get("flex_index_rest", self.flex_index_rest)
+            self.fsr_thumb_rest = data.get("fsr_thumb_rest", self.fsr_thumb_rest)
+            self.fsr_index_rest = data.get("fsr_index_rest", self.fsr_index_rest)
+            self.gx_offset = data.get("gx_offset", self.gx_offset)
+            self.gy_offset = data.get("gy_offset", self.gy_offset)
+            self.gz_offset = data.get("gz_offset", self.gz_offset)
+            return True
+        except Exception:
+            return False
 
 
     @staticmethod

@@ -4,6 +4,8 @@ from kivy.uix.screenmanager import Screen
 from kivy.properties import NumericProperty, StringProperty, BooleanProperty
 from kivy.clock import Clock
 from kivy.core.audio import SoundLoader  # 🔊 pour les sons
+from kivy.app import App
+
 
 from serial_reader import SerialHandReader
 from hand_state import HandState
@@ -29,21 +31,23 @@ def _norm(value, vmin, vmax):
 
 
 def detect_fingers_pressed(state: HandState):
-    """
-    Retourne (index_pressed, majeur_pressed) à partir de HandState.
+    app = App.get_running_app()
+    calib = getattr(app, "calib", None)
 
-    Hypothèse actuelle :
-      - state.flex_index = capteur sur l'INDEX
-      - state.flex_thumb = capteur sur le MAJEUR
-    """
-    # TODO : ajuste ces min/max avec tes vraies valeurs
-    index_norm = _norm(state.flex_index, vmin=300, vmax=800)
-    majeur_norm = _norm(state.flex_thumb, vmin=300, vmax=800)
+    if calib is None:
+        # fallback : ancien comportement
+        index_norm = _norm(state.flex_index, vmin=300, vmax=800)
+        majeur_norm = _norm(state.flex_thumb, vmin=300, vmax=800)
+        seuil_i = seuil_m = 0.6
+    else:
+        index_norm = _norm(state.flex_index, calib.flex_index_min, calib.flex_index_max)
+        majeur_norm = _norm(state.flex_thumb, calib.flex_thumb_min, calib.flex_thumb_max)
+        seuil_i = getattr(calib, "index_threshold", 0.6)
+        seuil_m = getattr(calib, "majeur_threshold", 0.6)
 
-    seuil = 0.6  # au-dessus de 0.6 = doigt bien fléchi
-
-    index_pressed = index_norm > seuil
-    majeur_pressed = majeur_norm > seuil
+    # discrimination + dominance (évite double déclenchement)
+    index_pressed = (index_norm > seuil_i) and (index_norm > majeur_norm)
+    majeur_pressed = (majeur_norm > seuil_m) and (majeur_norm > index_norm)
 
     return index_pressed, majeur_pressed
 

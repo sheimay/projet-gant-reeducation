@@ -3,6 +3,8 @@ from kivy.properties import NumericProperty, BooleanProperty
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import dp
+from kivy.app import App
+
 
 from serial_reader import SerialHandReader
 from hand_state import HandState
@@ -174,8 +176,18 @@ class JumpGameScreen(Screen):
     # ============================================================
 
     def _read_pressures(self, state: HandState) -> tuple[float, float]:
-        thumb_n = _norm(state.fsr_thumb, self.P_MIN, self.P_MAX)
-        index_n = _norm(state.fsr_index, self.P_MIN, self.P_MAX)
+        calib = getattr(App.get_running_app(), "calib", None)
+        if calib is None:
+            thumb_n = _norm(state.fsr_thumb, self.P_MIN, self.P_MAX)
+            index_n = _norm(state.fsr_index, self.P_MIN, self.P_MAX)
+        else:
+            thumb_n = _norm(state.fsr_thumb, calib.fsr_thumb_min, calib.fsr_thumb_max)
+            index_n = _norm(state.fsr_index, calib.fsr_index_min, calib.fsr_index_max)
+
+        # (optionnel) seuils adaptables
+            self.THUMB_T = getattr(calib, "thumb_fsr_threshold", self.THUMB_T)
+            self.INDEX_T = getattr(calib, "index_fsr_threshold", self.INDEX_T)
+
         return thumb_n, index_n
 
     def _pinch_event(self, thumb_n: float, index_n: float):
@@ -262,9 +274,9 @@ class JumpGameScreen(Screen):
 
         thumb_n, index_n = self._read_pressures(state)
 
-        if self._pinch_event(thumb_n, index_n):
-            pinched, strength = self._pinch_event(thumb_n, index_n)
-            if pinched:
-                self.do_jump(strength)
-                self.score += 1
+        pinched, strength = self._pinch_event(thumb_n, index_n)
+        if pinched:
+            self.do_jump(strength)
+            self.score += 1
+
         self.update_physics(dt)
