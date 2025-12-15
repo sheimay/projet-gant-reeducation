@@ -195,7 +195,15 @@ class GameScreen(Screen):
 
 
 class GantJeuApp(App):
+
     def build(self):
+        self.calib = HandCalibrator()
+        # charge calibration.txt si elle existe
+        try:
+            self.calib.load_txt("calibration.txt")
+        except Exception:
+            pass
+
         sm = ScreenManager()
         sm.add_widget(CalibrationScreen(name="calibration"))
         sm.add_widget(MenuScreen(name="menu"))
