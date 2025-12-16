@@ -13,7 +13,9 @@ from hand_state import HandState
 import random
 
 # Mets True quand tu voudras tester avec l'Arduino branché
-USE_ARDUINO = False
+USE_ARDUINO = True
+
+
 
 
 # ---------- Utilitaires capteurs ----------
@@ -81,7 +83,7 @@ class PianoGameScreen(Screen):
         if USE_ARDUINO:
             # ⚠️ adapte le port série à ton PC
             self.serial_reader = SerialHandReader(
-                port="COM3",
+                port="/dev/cu.usbmodem1201",
                 baudrate=115200,
             )
         else:
@@ -186,12 +188,17 @@ class PianoGameScreen(Screen):
         self.advance_to_next_note()
 
     def fail_current_note(self):
-        """Appelé quand la fenêtre de temps est écoulée sans bonne flexion."""
+        """Temps écoulé: on ne passe PAS à la note suivante, on redonne la même note."""
         if self.note_resolved:
             return
-        self.note_resolved = True
-        # plus tard : feedback visuel "raté" si tu veux
-        self.advance_to_next_note()
+
+        # (Optionnel) compteur d'erreurs si tu veux
+        # self.misses += 1
+
+        # On relance le même step: reset timers et clignotement
+        self.note_timer = 0.0
+        self.note_resolved = False
+        self._badge_blink_timer = 0.0
 
     # ----- Boucle de jeu -----
 

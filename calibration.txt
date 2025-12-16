@@ -1,0 +1,15 @@
+flex_thumb_min=711.9515418502202
+flex_thumb_max=738.0394736842105
+flex_index_min=721.8149779735683
+flex_index_max=982.5877192982456
+fsr_thumb_min=502.91189427312776
+fsr_thumb_max=660.0526315789474
+fsr_index_min=0.0
+fsr_index_max=0.0043859649122807015
+index_threshold=0.6
+majeur_threshold=0.6
+thumb_fsr_threshold=0.6
+index_fsr_threshold=0.6
+gx_offset=-0.5339903303964758
+gy_offset=-0.1266409295154185
+gz_offset=-0.09007367841409691

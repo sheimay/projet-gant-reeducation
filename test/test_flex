@@ -1,0 +1,92 @@
+import time
+import statistics
+import serial
+
+# --------- CONFIG ---------
+PORT = "/dev/tty.usbmodem1101"     # Linux: /dev/ttyACM0 ou /dev/ttyUSB0
+                          # macOS: /dev/cu.usbmodemXXXX ou /dev/cu.usbserial-XXXX
+                          # Windows: "COM3"
+BAUD = 115200
+CALIB_SECONDS = 2.0
+
+# Hystérésis: on crée deux seuils autour du seuil principal
+HYST = 15  # en "points ADC" (ajuste selon bruit)
+# --------------------------
+
+def parse_line(line: str):
+    # attend: ms,raw,etat
+    parts = line.strip().split(",")
+    if len(parts) < 2:
+        return None
+    try:
+        ms = int(parts[0])
+        raw = int(parts[1])
+        return ms, raw
+    except ValueError:
+        return None
+
+def main():
+    ser = serial.Serial(PORT, BAUD, timeout=1)
+    time.sleep(1.5)  # laisse le temps à l'Arduino de reset
+    ser.reset_input_buffer()
+
+    print(f"[INFO] Connecté à {PORT} @ {BAUD}")
+    print("[INFO] Calibration: garde le doigt AU REPOS pendant ~2s...")
+
+    # --- Calibration (collecte raw) ---
+    values = []
+    t0 = time.time()
+    while time.time() - t0 < CALIB_SECONDS:
+        line = ser.readline().decode(errors="ignore").strip()
+        if not line or line.startswith("ms,raw"):
+            continue
+        parsed = parse_line(line)
+        if parsed:
+            _, raw = parsed
+            values.append(raw)
+
+    if len(values) < 10:
+        print("[ERREUR] Pas assez de données pendant la calibration. Vérifie le port et le câblage.")
+        return
+
+    mu = statistics.mean(values)
+    sigma = statistics.pstdev(values) if len(values) > 1 else 0.0
+
+    seuil = int(mu + 3.0 * sigma)
+    seuil_on  = seuil + HYST   # pour passer en "FLÉCHI"
+    seuil_off = seuil - HYST   # pour repasser en "PAS FLÉCHI"
+
+    print(f"[INFO] Calibration OK: moyenne={mu:.1f}, sigma={sigma:.1f}")
+    print(f"[INFO] Seuil={seuil} | seuil_on={seuil_on} | seuil_off={seuil_off}")
+    print("[INFO] Lecture en cours (Ctrl+C pour arrêter)")
+
+    # --- Détection avec hystérésis ---
+    is_flexed = False
+
+    try:
+        while True:
+            line = ser.readline().decode(errors="ignore").strip()
+            if not line or line.startswith("ms,raw"):
+                continue
+
+            parsed = parse_line(line)
+            if not parsed:
+                continue
+
+            ms, raw = parsed
+
+            if not is_flexed and raw >= seuil_on:
+                is_flexed = True
+            elif is_flexed and raw <= seuil_off:
+                is_flexed = False
+
+            state_str = "FLÉCHI" if is_flexed else "PAS FLÉCHI"
+            print(f"{ms:>8} ms | raw={raw:>4} | {state_str}")
+
+    except KeyboardInterrupt:
+        print("\n[INFO] Arrêt.")
+    finally:
+        ser.close()
+
+if __name__ == "__main__":
+    main()

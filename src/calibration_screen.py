@@ -47,7 +47,7 @@ class CalibrationScreen(Screen):
         # utilise le même port que ta voiture si tu veux
         if self.serial_reader is None:
             self.serial_reader = SerialHandReader(
-                port="/dev/cu.usbmodem1101",  # <-- mets le même que GameScreen
+                port="/dev/cu.usbmodem1201",  # <-- mets le même que GameScreen
                 baudrate=115200
             )
 
@@ -112,6 +112,12 @@ class CalibrationScreen(Screen):
         open_s = self._open_samples
         n1 = len(open_s)
         n2 = len(closed_samples)
+    # calibration_screen.py, dans _finish(), après calcul open_s
+
+        calib.flex_thumb_rest = avg([s.flex_thumb for s in open_s])
+        calib.flex_index_rest = avg([s.flex_index for s in open_s])
+        calib.fsr_thumb_rest  = avg([s.fsr_thumb  for s in open_s])
+        calib.fsr_index_rest  = avg([s.fsr_index  for s in open_s])
 
         flex_thumb_min = avg([s.flex_thumb for s in open_s])
         flex_index_min = avg([s.flex_index for s in open_s])
@@ -122,6 +128,8 @@ class CalibrationScreen(Screen):
         flex_index_max = avg([s.flex_index for s in closed_samples])
         fsr_thumb_max  = avg([s.fsr_thumb  for s in closed_samples])
         fsr_index_max  = avg([s.fsr_index  for s in closed_samples])
+
+
 
         # --- affectation bornes ---
         calib.flex_thumb_min = flex_thumb_min

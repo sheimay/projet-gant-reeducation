@@ -141,8 +141,8 @@
 
             BoxLayout:
                 orientation: "horizontal"
-                spacing: dp(20)
-                size_hint_y: 0.6
+                spacing: dp(50)
+                size_hint_y: 2
 
                 GameCard:
                     on_release: app.root.current = "game"
@@ -159,51 +159,58 @@
                     title: "Jump"
                     icon_scale: 1.25
                     on_release: app.root.current = "jump"
+                        
+            Label:
+                text: "ou suivez votre évolution"
+                font_size: "16sp"
+                color: 0.2, 0.3, 0.45, 1
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+                size_hint_y: None
+                height: dp(26)
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "top"
+                size_hint_y: None
+                height: dp(100)
+
+                GameCard:
+                    icon: "assets/icon_followup.png"   # mets ton icône
+                    title: "Suivi personnel"
+                    icon_scale: 0.7
+                    on_release: app.root.current = "followup"
+                    size_hint_x: None
+                    width: dp(320)
 
 
 
-<GameCard@ButtonBehavior+BoxLayout>:
+
+<GameCard@ButtonBehavior+FloatLayout>:
     icon: ""
     title: ""
-    orientation: "vertical"
-    padding: dp(16)
-    spacing: dp(10)
-    size_hint_x: 1
+    icon_scale: 1.0
 
-    canvas.before:
-        Color:
-            rgba: 1, 1, 1, 1
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [24, 24, 24, 24]
+    # ---- Carte blanche (fond) ----
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: 1, 0.65
+        pos_hint: {"x": 0, "y": 0}
+        padding: dp(16)
 
-    # --- Zone icône (hauteur fixe pour homogénéiser) ---
-    AnchorLayout:
-        anchor_x: "center"
-        anchor_y: "top"
-        size_hint_y: None
-        height: dp(120)
-        padding: 0, dp(10), 0, 0   # ← DESCEND vraiment l’icône
+        canvas.before:
+            Color:
+                rgba: 1, 1, 1, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
 
-
-        Image:
-            # si icon est vide -> on ne montre rien (évite le "bloc blanc")
-            source: root.icon if root.icon else ""
-            opacity: 1 if root.icon else 0
-
-            allow_stretch: True
-            keep_ratio: True
-
-            # l’icône s’adapte à la zone, sans déborder
-            size_hint: 1, 1
-
-    # --- Texte ---
-    AnchorLayout:
-        anchor_x: "center"
-        anchor_y: "center"
-        size_hint_y: None
-        height: dp(28)
+        # espace réservé sous l’icône (pour que le texte descende)
+        Widget:
+            size_hint_y: None
+            height: dp(18)
 
         Label:
             text: root.title
@@ -213,6 +220,17 @@
             halign: "center"
             valign: "middle"
             text_size: self.size
+
+    # ---- Icône flottante AU-DESSUS de la carte ----
+    Image:
+        source: root.icon if root.icon else ""
+        opacity: 1 if root.icon else 0
+        allow_stretch: True
+        keep_ratio: True
+        size_hint: None, None
+        size: dp(95) * root.icon_scale, dp(95) * root.icon_scale
+        pos_hint: {"center_x": 0.5, "center_y": 0.72}
+
 
 
 <GameScreen>:
@@ -359,13 +377,502 @@
             # Optionnel : évite cache si tu modifies souvent le fichier
             nocache: True
 
-        # =========================
-        # BOUTON RETOUR
-        # =========================
+        # --- Bouton retour ---
         Button:
             text: "Retour au menu"
             size_hint: None, None
+            size: dp(220), dp(46)
+            pos_hint: {"center_x": 0.5, "y": 0.02}
+            background_normal: ""
+            background_color: 0, 0, 0, 0.7
+            color: 1, 1, 1, 1
+            on_release: app.root.current = "menu"
+
+                
+<FollowUpScreen>:
+    FloatLayout:
+        Image:
+            source: "assets/menu_background.png"
+            allow_stretch: True
+            keep_ratio: False
+            size: root.width, root.height
+            pos: 0, 0
+
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(50)
+            size_hint: 0.9, 0.7
+            pos_hint: {"center_x": 0.5, "center_y": 0.6}
+
+            # ---- TITRE ----
+            Label:
+                text: "Suivi personnel"
+                font_size: "28sp"
+                bold: True
+                color: 0.08, 0.13, 0.24, 1
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+                size_hint_y: None
+                height: dp(42)
+
+            # ---- SOUS-TITRE ----
+            Label:
+                text: "Suivez l’évolution de vos capacités au fil des séances."
+                font_size: "16sp"
+                color: 0.2, 0.3, 0.45, 1
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+                size_hint_y: None
+                height: dp(20)
+
+            # ---- CARTES DE SUIVI ----
+            BoxLayout:
+                orientation: "horizontal"
+                spacing: dp(50)
+                size_hint_y: 1
+
+                GameCard:
+                    icon: "assets/icon_poignet.png"
+                    title: "Rotation du poignet"
+                    icon_scale: 1.0
+                    on_release: app.root.current = "followup_wrist"
+
+
+                GameCard:
+                    icon: "assets/icon_flex.png"
+                    title: "Flexion des doigts"
+                    icon_scale: 0.7
+                    on_release: app.root.current = "followup_flex"
+
+                GameCard:
+                    icon: "assets/icon_fsr.png"
+                    title: "Puissance des doigts"
+                    icon_scale: 0.7
+                    on_release: app.root.current = "followup_pressure"
+
+        # --- Bouton retour ---
+        Button:
+            text: "Retour au menu"
+            size_hint: None, None
+            size: dp(220), dp(46)
+            pos_hint: {"center_x": 0.5, "y": 0.02}
+            background_normal: ""
+            background_color: 0, 0, 0, 0.7
+            color: 1, 1, 1, 1
+            on_release: app.root.current = "menu"
+        
+
+
+
+<WristFollowUpScreen>:
+    FloatLayout:
+        Image:
+            source: "assets/menu_background.png"
+            allow_stretch: True
+            keep_ratio: False
+            size: root.width, root.height
+            pos: 0, 0
+
+        # Titre
+        Label:
+            text: "Rotation du poignet"
+            font_size: "28sp"
+            bold: True
+            color: 0.08, 0.13, 0.24, 1
+            size_hint: 1, None
+            height: dp(50)
+            pos_hint: {"center_x": 0.5, "top": 0.98}
+            halign: "center"
+            valign: "middle"
+            text_size: self.size
+
+        # Contenu : graphe à gauche + main à droite (placeholder)
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: dp(16)
+            padding: dp(16)
+            size_hint: 0.92, 0.75
+            pos_hint: {"center_x": 0.5, "center_y": 0.50}
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.62
+                padding: dp(10)
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.92
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [18]
+
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: dp(56)
+                    spacing: dp(6)
+
+                    Label:
+                        text: "Angle (°) en fonction du temps"
+                        bold: True
+                        color: 0.08, 0.13, 0.24, 1
+                        size_hint_y: None
+                        height: dp(28)
+
+                    BoxLayout:
+                        orientation: "horizontal"
+                        size_hint_y: None
+                        height: dp(22)
+                        spacing: dp(10)
+
+                        # Légende couleur
+                        BoxLayout:
+                            size_hint_x: None
+                            width: dp(14)
+                            canvas.before:
+                                Color:
+                                    rgba: 0.55, 0.75, 0.95, 1   # bleu pastel
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [4]
+
+                        Label:
+                            text: "Angle"
+                            color: 0.08, 0.13, 0.24, 1
+                            size_hint_x: None
+                            width: dp(60)
+
+                        Label:
+                            text: "{:.1f} °".format(root.current_angle)
+                            color: 0.08, 0.13, 0.24, 1
+                            bold: True
+
+                        Widget:
+
+                        Label:
+                            text: "Vitesse"
+                            color: 0.08, 0.13, 0.24, 1
+                            size_hint_x: None
+                            width: dp(70)
+
+                        Label:
+                            text: "{:.1f} °/s".format(root.current_rate)
+                            color: 0.08, 0.13, 0.24, 1
+                            bold: True
+
+                BoxLayout:
+                    id: graph_container
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.38
+                padding: dp(10)
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.92
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [18]
+
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_x: 0.38
+                    padding: dp(10)
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.92
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [18]
+
+                    Hand3DView:
+                        id: hand3d
+                        size_hint: 1, 1
+                        
+
+
+        Button:
+            text: "Retour"
+            size_hint: None, None
             size: dp(140), dp(44)
             pos_hint: {"x": 0.04, "y": 0.04}
-            on_release:
-                app.root.current = "menu"
+            on_release: app.root.current = "followup"
+
+
+<FlexFollowUpScreen>:
+    FloatLayout:
+        Image:
+            source: "assets/menu_background.png"
+            allow_stretch: True
+            keep_ratio: False
+            size: root.width, root.height
+            pos: 0, 0
+
+        # Titre
+        Label:
+            text: "Flexion des doigts"
+            font_size: "28sp"
+            bold: True
+            color: 0.08, 0.13, 0.24, 1
+            size_hint: 1, None
+            height: dp(50)
+            pos_hint: {"center_x": 0.5, "top": 0.98}
+            halign: "center"
+            valign: "middle"
+            text_size: self.size
+
+        # Contenu : graphe + main
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: dp(16)
+            padding: dp(16)
+            size_hint: 0.92, 0.75
+            pos_hint: {"center_x": 0.5, "center_y": 0.50}
+
+            # ---- GRAPHE ----
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.62
+                padding: dp(10)
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.92
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [18]
+
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: dp(72)
+                    spacing: dp(6)
+
+                    Label:
+                        text: "Flexion index et majeur (normalisée)"
+                        bold: True
+                        color: 0.08, 0.13, 0.24, 1
+                        size_hint_y: None
+                        height: dp(28)
+
+                    # Ligne légende + valeurs
+                    BoxLayout:
+                        orientation: "horizontal"
+                        size_hint_y: None
+                        height: dp(22)
+                        spacing: dp(10)
+
+                        # Index (bleu pastel)
+                        BoxLayout:
+                            size_hint_x: None
+                            width: dp(14)
+                            canvas.before:
+                                Color:
+                                    rgba: 0.55, 0.75, 0.95, 1
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [4]
+                        Label:
+                            text: "Index"
+                            color: 0.08, 0.13, 0.24, 1
+                            size_hint_x: None
+                            width: dp(60)
+                        Label:
+                            text: "{:.2f}".format(root.current_index)
+                            color: 0.08, 0.13, 0.24, 1
+                            bold: True
+
+                        Widget:
+
+                        # Majeur (violet pastel)
+                        BoxLayout:
+                            size_hint_x: None
+                            width: dp(14)
+                            canvas.before:
+                                Color:
+                                    rgba: 0.78, 0.72, 0.92, 1
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [4]
+                        Label:
+                            text: "Majeur"
+                            color: 0.08, 0.13, 0.24, 1
+                            size_hint_x: None
+                            width: dp(70)
+                        Label:
+                            text: "{:.2f}".format(root.current_majeur)
+                            color: 0.08, 0.13, 0.24, 1
+                            bold: True
+
+
+                BoxLayout:
+                    id: graph_container
+
+            # ---- MAIN (PLACEHOLDER) ----
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.38
+                padding: dp(10)
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.92
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [18]
+
+                
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_x: 0.38
+                    padding: dp(10)
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.92
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [18]
+
+                    Hand3DView:
+                        id: hand3d
+
+        Button:
+            text: "Retour"
+            size_hint: None, None
+            size: dp(140), dp(44)
+            pos_hint: {"x": 0.04, "y": 0.04}
+            on_release: app.root.current = "followup"
+
+
+<PressureFollowUpScreen>:
+    FloatLayout:
+        Image:
+            source: "assets/menu_background.png"
+            allow_stretch: True
+            keep_ratio: False
+            size: root.width, root.height
+            pos: 0, 0
+
+        # Titre
+        Label:
+            text: "Puissance / pression des doigts"
+            font_size: "28sp"
+            bold: True
+            color: 0.08, 0.13, 0.24, 1
+            size_hint: 1, None
+            height: dp(50)
+            pos_hint: {"center_x": 0.5, "top": 0.98}
+            halign: "center"
+            valign: "middle"
+            text_size: self.size
+
+        # Contenu : graphe + main
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: dp(16)
+            padding: dp(16)
+            size_hint: 0.92, 0.75
+            pos_hint: {"center_x": 0.5, "center_y": 0.50}
+
+            # ---- GRAPHE ----
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.62
+                padding: dp(10)
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.92
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [18]
+
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: dp(56)
+                    spacing: dp(6)
+
+                    Label:
+                        text: "Pression index (FSR) normalisée"
+                        bold: True
+                        color: 0.08, 0.13, 0.24, 1
+                        size_hint_y: None
+                        height: dp(28)
+
+                    BoxLayout:
+                        orientation: "horizontal"
+                        size_hint_y: None
+                        height: dp(22)
+                        spacing: dp(10)
+
+                        # Pression (vert pastel)
+                        BoxLayout:
+                            size_hint_x: None
+                            width: dp(14)
+                            canvas.before:
+                                Color:
+                                    rgba: 0.70, 0.85, 0.70, 1
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [4]
+
+                        Label:
+                            text: "Index"
+                            color: 0.08, 0.13, 0.24, 1
+                            size_hint_x: None
+                            width: dp(60)
+
+                        Label:
+                            text: "{:.2f}".format(root.current_pressure)
+                            color: 0.08, 0.13, 0.24, 1
+                            bold: True
+
+
+                BoxLayout:
+                    id: graph_container
+
+            # ---- MAIN (PLACEHOLDER) ----
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.38
+                padding: dp(10)
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.92
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [18]
+
+                
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_x: 0.38
+                    padding: dp(10)
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.92
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [18]
+
+                    Hand3DView:
+                        id: hand3d
+
+        Button:
+            text: "Retour"
+            size_hint: None, None
+            size: dp(140), dp(44)
+            pos_hint: {"x": 0.04, "y": 0.04}
+            on_release: app.root.current = "followup"

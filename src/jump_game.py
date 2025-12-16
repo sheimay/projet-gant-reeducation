@@ -5,12 +5,11 @@ from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.app import App
 
-
 from serial_reader import SerialHandReader
 from hand_state import HandState
 
-USE_ARDUINO = False
-SERIAL_PORT = "COM3"
+USE_ARDUINO = True
+SERIAL_PORT = "/dev/cu.usbmodem1201"
 SERIAL_BAUD = 115200
 
 
@@ -50,43 +49,39 @@ class JumpGameScreen(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        # Pour éviter que on_size ré-initialise en boucle
         self._bg_inited = False
+        self._t = 0.0
 
         # --------- Série Arduino ----------
         self.serial_reader: SerialHandReader | None = None
         if USE_ARDUINO:
             self.serial_reader = SerialHandReader(port=SERIAL_PORT, baudrate=SERIAL_BAUD)
 
-        # --------- Détection pince (FSR pouce + index) ----------
-        self.THUMB_T = 0.60
-        self.INDEX_T = 0.60
-        self.SYNC_WINDOW = 0.20
-
-        self.P_MIN = 100
+       # --------- Détection appui (FSR index seul) ----------
+        self.INDEX_T = 0.30          # seuil normalisé (0..1) - sera écrasé par calibration si dispo
+        self.P_MIN = 100             # fallback si pas de calibration
         self.P_MAX = 900
 
-        self._t = 0.0
-        self._thumb_press_time: float | None = None
-        self._index_press_time: float | None = None
-        self._was_pinch = False
-
+        self._was_pressed = False
         self.JUMP_COOLDOWN = 0.25
         self._last_jump_time = -999.0
+
+        # Debug print rate-limit
+        self._dbg_timer = 0.0
 
         # --------- Physique saut ----------
         self.vy = 0.0
         self.gravity = -1800.0
-        self.jump_impulse = 750.0
         self.ground_y = dp(100)
 
         # ===== Saut à amplitude variable =====
-        self.min_impulse = 520.0     # petit saut
-        self.max_impulse = 980.0     # grand saut
-        self.strength_exp = 1.3      # courbe de sensibilité (1.0 = linéaire)
+        self.min_impulse = 520.0
+        self.max_impulse = 980.0
+        self.strength_exp = 1.3
         self.last_pinch_strength = 0.0
 
+        # Debug print rate-limit
+        self._dbg_timer = 0.0
 
         self._keyboard_bound = False
 
@@ -95,33 +90,21 @@ class JumpGameScreen(Screen):
     # ============================================================
 
     def on_size(self, *args):
-        """
-        Appelé quand la taille de l'écran change.
-        On initialise le fond UNE SEULE FOIS quand width est valide.
-        """
         if self.width <= 1:
             return
-
         if not self._bg_inited:
             self.bg1_x = 0
             self.bg2_x = self.width
             self._bg_inited = True
 
     def update_background(self, dt: float):
-        """Défilement + boucle infinie."""
-        # Si pas encore initialisé (ex: width==0 au départ), on n’avance pas
         if not self._bg_inited or self.width <= 1:
             return
-
         w = self.width
-
         self.bg1_x -= self.scroll_speed * dt
         self.bg2_x -= self.scroll_speed * dt
-
-        # Rebouclage
         if self.bg1_x <= -w:
             self.bg1_x = self.bg2_x + w
-
         if self.bg2_x <= -w:
             self.bg2_x = self.bg1_x + w
 
@@ -134,13 +117,12 @@ class JumpGameScreen(Screen):
 
         self.score = 0
         self._t = 0.0
-        self._thumb_press_time = None
-        self._index_press_time = None
-        self._was_pinch = False
         self._last_jump_time = -999.0
 
         self.avatar_y = self.ground_y
         self.vy = 0.0
+
+        self._dbg_timer = 0.0
 
         if self.serial_reader is not None:
             self.serial_reader.start()
@@ -167,69 +149,56 @@ class JumpGameScreen(Screen):
 
     def _on_key_down(self, window, keycode, scancode, codepoint, modifiers):
         if keycode and len(keycode) > 1 and keycode[1] == "space":
-            self.do_jump()
+            self.do_jump(1.0)
             return True
         return False
 
     # ============================================================
-    # Détection pince (Arduino)
+    # Détection pince (Arduino) + calibration Kivy
     # ============================================================
 
-    def _read_pressures(self, state: HandState) -> tuple[float, float]:
-        calib = getattr(App.get_running_app(), "calib", None)
-        if calib is None:
-            thumb_n = _norm(state.fsr_thumb, self.P_MIN, self.P_MAX)
-            index_n = _norm(state.fsr_index, self.P_MIN, self.P_MAX)
-        else:
-            thumb_n = _norm(state.fsr_thumb, calib.fsr_thumb_min, calib.fsr_thumb_max)
-            index_n = _norm(state.fsr_index, calib.fsr_index_min, calib.fsr_index_max)
+    def _get_calib(self):
+        app = App.get_running_app()
+        return getattr(app, "calib", None)
 
-        # (optionnel) seuils adaptables
-            self.THUMB_T = getattr(calib, "thumb_fsr_threshold", self.THUMB_T)
+    def _read_index_pressure(self, state: HandState) -> float:
+        """
+        ATTENTION HARDWARE:
+        Le FSR index est physiquement branché sur A2,
+        mais à cause d'un défaut de soudure Arduino,
+        la valeur arrive dans la 4e colonne du serial => fsr_thumb.
+        """
+        calib = self._get_calib()
+
+        if calib is None:
+            index_n = _norm(state.fsr_thumb, self.P_MIN, self.P_MAX)
+        else:
+            index_n = _norm(
+                state.fsr_thumb,
+                calib.fsr_thumb_min,
+                calib.fsr_thumb_max
+            )
             self.INDEX_T = getattr(calib, "index_fsr_threshold", self.INDEX_T)
 
-        return thumb_n, index_n
+        return index_n
 
-    def _pinch_event(self, thumb_n: float, index_n: float):
 
-        thumb_pressed = thumb_n > self.THUMB_T
-        index_pressed = index_n > self.INDEX_T
 
-        self.thumb_active = thumb_pressed
-        self.index_active = index_pressed
+    def _press_event(self, index_n: float) -> tuple[bool, float]:
+        pressed = index_n > self.INDEX_T
+        self.index_active = pressed     # pour debug UI si tu l’utilises
 
-        if thumb_pressed and self._thumb_press_time is None:
-            self._thumb_press_time = self._t
-        if index_pressed and self._index_press_time is None:
-            self._index_press_time = self._t
-
-        if not thumb_pressed:
-            self._thumb_press_time = None
-        if not index_pressed:
-            self._index_press_time = None
-
-        pinch_now = False
-        if (
-            thumb_pressed and index_pressed
-            and self._thumb_press_time is not None
-            and self._index_press_time is not None
-            and abs(self._thumb_press_time - self._index_press_time) <= self.SYNC_WINDOW
-        ):
-            pinch_now = True
-
-        self.pinch_active = pinch_now
-        strength = min(thumb_n, index_n)  # 0..1 (le doigt le plus faible limite)
-
-        if pinch_now and (not self._was_pinch) and (self._t - self._last_jump_time) >= self.JUMP_COOLDOWN:
-            self._was_pinch = True
+        # front montant + cooldown
+        if pressed and (not self._was_pressed) and (self._t - self._last_jump_time) >= self.JUMP_COOLDOWN:
+            self._was_pressed = True
             self._last_jump_time = self._t
-            self.last_pinch_strength = strength
-            return True, strength
+            return True, index_n  # strength = index_n (0..1)
 
-        if not pinch_now:
-            self._was_pinch = False
+        if not pressed:
+            self._was_pressed = False
 
         return False, 0.0
+
 
     # ============================================================
     # Physique saut
@@ -237,12 +206,14 @@ class JumpGameScreen(Screen):
 
     def do_jump(self, strength: float = 1.0):
         """Saute seulement si l’avatar est au sol, avec amplitude variable."""
-        if self.avatar_y <= self.ground_y + 1.0:
-            s = max(0.0, min(1.0, strength))   # clamp 0..1
-            s = s ** self.strength_exp         # courbe (progressif)
-
+        if self.avatar_y <= self.ground_y + 200.0:
+            s = max(0.0, min(1.0, strength))
+            s = s ** self.strength_exp
             impulse = self.min_impulse + s * (self.max_impulse - self.min_impulse)
             self.vy = impulse
+            #print("DO JUMP", self.vy)
+
+
 
     def update_physics(self, dt: float):
         self.vy += self.gravity * dt
@@ -252,6 +223,15 @@ class JumpGameScreen(Screen):
             self.avatar_y = self.ground_y
             self.vy = 0.0
 
+        """# DEBUG: 5 Hz
+        self._dbg_timer += dt
+        if self._dbg_timer >= 0.2:
+            av_y = self.avatar_y
+            img_y = self.ids.avatar.y if "avatar" in self.ids else -1
+            print(f"[PHYS] vy={self.vy:.1f}  avatar_y={av_y:.1f}  image_y={img_y:.1f}")
+            self._dbg_timer = 0.0
+"""
+
     # ============================================================
     # Boucle jeu
     # ============================================================
@@ -259,10 +239,10 @@ class JumpGameScreen(Screen):
     def update_game(self, dt: float):
         self._t += dt
 
-        # ✅ fond animé
+        # Fond
         self.update_background(dt)
 
-        # Arduino OFF
+        # Si pas d'Arduino, juste physique
         if self.serial_reader is None:
             self.update_physics(dt)
             return
@@ -272,11 +252,25 @@ class JumpGameScreen(Screen):
             self.update_physics(dt)
             return
 
-        thumb_n, index_n = self._read_pressures(state)
+        # Lecture FSR index + calibration
+        index_n = self._read_index_pressure(state)
 
-        pinched, strength = self._pinch_event(thumb_n, index_n)
-        if pinched:
+        # Debug (5 Hz)
+        """self._dbg_timer += dt
+        if self._dbg_timer >= 0.2:
+            print(
+                f"FSR INDEX RAW -> {state.fsr_thumb} | "
+                f"NORM -> {index_n:.3f} | T -> {self.INDEX_T:.2f}"
+            )
+            self._dbg_timer = 0.0"""
+
+        # Appui -> jump
+        pressed, strength = self._press_event(index_n)
+        if pressed:
             self.do_jump(strength)
             self.score += 1
 
+        # <<< FIX CRITIQUE : la physique DOIT toujours s’exécuter
         self.update_physics(dt)
+
+

@@ -5,15 +5,25 @@ from kivy.properties import NumericProperty
 from kivy.core.window import Window
 from kivy.clock import Clock
 import random
+from collections import deque
+from math import fmod
 from kivy.uix.image import Image
 from kivy.metrics import dp
+from kivy.lang import Builder
+from kivy.factory import Factory
+
+
 from calibration_screen import CalibrationScreen
 from hand_state import HandCalibrator
 from serial_reader import SerialHandReader
 from piano_game import PianoGameScreen
 from jump_game import JumpGameScreen
+from graph import WristFollowUpScreen, FlexFollowUpScreen, PressureFollowUpScreen
+from hand3d import Hand3DView
 
 
+
+Factory.register("Hand3DView", cls=Hand3DView)
 
 # Charger le KV
 Builder.load_file("game.kv")
@@ -21,6 +31,24 @@ Builder.load_file("game.kv")
 
 class MenuScreen(Screen):
     pass
+class FollowUpScreen(Screen):
+    pass
+
+from kivy.uix.screenmanager import Screen
+from kivy.clock import Clock
+from kivy.app import App
+
+from collections import deque
+from math import fmod
+
+from serial_reader import SerialHandReader
+
+# Graph Kivy Garden
+from kivy_garden.graph import Graph, LinePlot
+
+USE_ARDUINO = True
+SERIAL_PORT = "/dev/cu.usbmodem1201"
+SERIAL_BAUD = 115200
 
 
 class GameScreen(Screen):
@@ -40,7 +68,7 @@ class GameScreen(Screen):
         # ---- LECTURE SERIE + CALIB ----
         # ADAPTE LE PORT ICI (très important)
         self.serial_reader = SerialHandReader(
-            port="/dev/cu.usbmodem1101",  # <-- à modifier 
+            port="/dev/cu.usbmodem1201",  # <-- à modifier 
             baudrate=115200,
         )
         self.calib = HandCalibrator()
@@ -210,6 +238,10 @@ class GantJeuApp(App):
         sm.add_widget(GameScreen(name="game")) # voiture
         sm.add_widget(PianoGameScreen(name="piano")) # piano
         sm.add_widget(JumpGameScreen(name="jump"))  # jump
+        sm.add_widget(FollowUpScreen(name="followup"))
+        sm.add_widget(WristFollowUpScreen(name="followup_wrist"))
+        sm.add_widget(FlexFollowUpScreen(name="followup_flex"))
+        sm.add_widget(PressureFollowUpScreen(name="followup_pressure"))
 
 
         return sm

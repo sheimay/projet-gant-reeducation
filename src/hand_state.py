@@ -95,12 +95,31 @@ class HandCalibrator:
         self.gy_offset = 0.0
         self.gz_offset = 0.0
 
+    # hand_state.py  (dans HandCalibrator)
+
     def save_txt(self, path: str):
         with open(path, "w", encoding="utf-8") as f:
-            f.write(f"flex_thumb_rest={self.flex_thumb_rest}\n")
-            f.write(f"flex_index_rest={self.flex_index_rest}\n")
-            f.write(f"fsr_thumb_rest={self.fsr_thumb_rest}\n")
-            f.write(f"fsr_index_rest={self.fsr_index_rest}\n")
+            # bornes analogiques
+            f.write(f"flex_thumb_min={self.flex_thumb_min}\n")
+            f.write(f"flex_thumb_max={self.flex_thumb_max}\n")
+            f.write(f"flex_index_min={self.flex_index_min}\n")
+            f.write(f"flex_index_max={self.flex_index_max}\n")
+            f.write(f"fsr_thumb_min={self.fsr_thumb_min}\n")
+            f.write(f"fsr_thumb_max={self.fsr_thumb_max}\n")
+            f.write(f"fsr_index_min={self.fsr_index_min}\n")
+            f.write(f"fsr_index_max={self.fsr_index_max}\n")
+
+            # seuils (si tu les utilises)
+            if hasattr(self, "index_threshold"):
+                f.write(f"index_threshold={self.index_threshold}\n")
+            if hasattr(self, "majeur_threshold"):
+                f.write(f"majeur_threshold={self.majeur_threshold}\n")
+            if hasattr(self, "thumb_fsr_threshold"):
+                f.write(f"thumb_fsr_threshold={self.thumb_fsr_threshold}\n")
+            if hasattr(self, "index_fsr_threshold"):
+                f.write(f"index_fsr_threshold={self.index_fsr_threshold}\n")
+
+            # offsets gyro
             f.write(f"gx_offset={self.gx_offset}\n")
             f.write(f"gy_offset={self.gy_offset}\n")
             f.write(f"gz_offset={self.gz_offset}\n")
@@ -116,10 +135,23 @@ class HandCalibrator:
                     k, v = line.split("=", 1)
                     data[k.strip()] = float(v.strip())
 
-            self.flex_thumb_rest = data.get("flex_thumb_rest", self.flex_thumb_rest)
-            self.flex_index_rest = data.get("flex_index_rest", self.flex_index_rest)
-            self.fsr_thumb_rest = data.get("fsr_thumb_rest", self.fsr_thumb_rest)
-            self.fsr_index_rest = data.get("fsr_index_rest", self.fsr_index_rest)
+            # bornes analogiques
+            self.flex_thumb_min = data.get("flex_thumb_min", self.flex_thumb_min)
+            self.flex_thumb_max = data.get("flex_thumb_max", self.flex_thumb_max)
+            self.flex_index_min = data.get("flex_index_min", self.flex_index_min)
+            self.flex_index_max = data.get("flex_index_max", self.flex_index_max)
+            self.fsr_thumb_min = data.get("fsr_thumb_min", self.fsr_thumb_min)
+            self.fsr_thumb_max = data.get("fsr_thumb_max", self.fsr_thumb_max)
+            self.fsr_index_min = data.get("fsr_index_min", self.fsr_index_min)
+            self.fsr_index_max = data.get("fsr_index_max", self.fsr_index_max)
+
+            # seuils
+            if "index_threshold" in data: self.index_threshold = data["index_threshold"]
+            if "majeur_threshold" in data: self.majeur_threshold = data["majeur_threshold"]
+            if "thumb_fsr_threshold" in data: self.thumb_fsr_threshold = data["thumb_fsr_threshold"]
+            if "index_fsr_threshold" in data: self.index_fsr_threshold = data["index_fsr_threshold"]
+
+            # offsets gyro
             self.gx_offset = data.get("gx_offset", self.gx_offset)
             self.gy_offset = data.get("gy_offset", self.gy_offset)
             self.gz_offset = data.get("gz_offset", self.gz_offset)
